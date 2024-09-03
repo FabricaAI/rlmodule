@@ -1,27 +1,54 @@
-import gc
-
 import torch
 import torch.nn as nn
 
-import rlmodule
+# todo consider get rid of this and just pass torch.nn stuff
+def _get_activation_function(activation: str) -> nn.Module:
+    """Get the activation function
 
-from skrl.agents.torch.ppo import PPO, PPO_DEFAULT_CONFIG, PPO_RNN
-from skrl.envs.wrappers.torch import OmniverseIsaacGymWrapper
-from skrl.memories.torch import RandomMemory
-from skrl.resources.preprocessors.torch import RunningStandardScaler
-from skrl.resources.schedulers.torch import KLAdaptiveRL
-from skrl.trainers.torch import SequentialTrainer
-from skrl.utils import set_seed
-from skrl.utils.model_instantiators.torch import (
-    DeterministicLayer,
-    GaussianLayer,
-    RLModel,
-    Shape,
-    SharedRLModel,
-    _get_activation_function,
-    shared_model,
-    shared_model_lstm,
-)
+    Supported activation functions:
+
+    - "elu"
+    - "leaky_relu"
+    - "relu"
+    - "selu"
+    - "sigmoid"
+    - "softmax"
+    - "softplus"
+    - "softsign"
+    - "tanh"
+
+    :param activation: activation function name.
+                       If activation is an empty string, a placeholder will be returned (``torch.nn.Identity()``)
+    :type activation: str
+
+    :raises: ValueError if activation is not a valid activation function
+
+    :return: activation function
+    :rtype: nn.Module
+    """
+    if not activation:
+        return torch.nn.Identity()
+    elif activation == "relu":
+        return torch.nn.ReLU()
+    elif activation == "tanh":
+        return torch.nn.Tanh()
+    elif activation == "sigmoid":
+        return torch.nn.Sigmoid()
+    elif activation == "leaky_relu":
+        return torch.nn.LeakyReLU()
+    elif activation == "elu":
+        return torch.nn.ELU()
+    elif activation == "softplus":
+        return torch.nn.Softplus()
+    elif activation == "softsign":
+        return torch.nn.Softsign()
+    elif activation == "selu":
+        return torch.nn.SELU()
+    elif activation == "softmax":
+        return torch.nn.Softmax()
+    else:
+        raise ValueError(f"Unknown activation function: {activation}")
+
 
 
 # TODO(ll) double function, already defined in model_instantiators.py

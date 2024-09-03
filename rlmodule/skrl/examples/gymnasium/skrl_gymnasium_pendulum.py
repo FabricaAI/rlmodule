@@ -3,7 +3,8 @@ import gymnasium as gym
 import torch
 import torch.nn as nn
 
-from rlmodule.source.rlmodel import RLModel
+from rlmodule.source.rlmodel import RLModel, SharedRLModel, GaussianLayer, DeterministicLayer
+from rlmodule.source.modules import MLP
 
 # import the skrl components to build the RL system
 from skrl.agents.torch.ppo import PPO, PPO_DEFAULT_CONFIG
@@ -11,53 +12,48 @@ from skrl.agents.torch.ppo import PPO, PPO_DEFAULT_CONFIG
 from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
 #from skrl.envs.wrappers.torch import wrap_env
 from skrl.memories.torch import RandomMemory
-from skrl.models.torch import DeterministicMixin, GaussianMixin, Model
 from skrl.resources.preprocessors.torch import RunningStandardScaler
 from skrl.resources.schedulers.torch import KLAdaptiveRL
 from skrl.trainers.torch import SequentialTrainer
 from skrl.utils import set_seed
-
+from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
 
 # todo set seed
 # seed for reproducibility
 set_seed()  # e.g. `set_seed(42)` for fixed seed
 
+def get_shared_model(env):
+    # instantiate the agent's models (function approximators).
+    params = {'input_size': env.observation_space.shape[0], 'hidden_units': [64, 64, 64], 'activations': ['relu', 'relu', 'relu']}
+    net = MLP(params)
+    
+    model = SharedRLModel(
+        observation_space=env.observation_space.shape[0], # TODO not do shape[0] but process box normally
+        action_space=env.observation_space.shape[0],
+        device=device,
+        network=net,
+        output_layer={
+            'policy': GaussianLayer(
+                input_size=64,  # TODO
+                output_size=env.action_space.shape[0],
+                device=device,
+                output_activation=nn.Tanh(),
+                clip_actions=False,
+                clip_log_std=True,
+                min_log_std=-1.2,
+                max_log_std=2,
+                initial_log_std=0.2,
+            ),
+            'value': DeterministicLayer(
+                input_size=64,
+                output_size=1,
+                device=device,
+                output_activation=nn.Identity(),
+            ),
+        },
+    ).to(device) # TODO careful about device
 
-# define models (stochastic and deterministic models) using mixins
-class Policy(GaussianMixin, Model):
-    def __init__(self, observation_space, action_space, device, clip_actions=False,
-                 clip_log_std=True, min_log_std=-20, max_log_std=2, reduction="sum"):
-        Model.__init__(self, observation_space, action_space, device)
-        GaussianMixin.__init__(self, clip_actions, clip_log_std, min_log_std, max_log_std, reduction)
-
-        self.net = nn.Sequential(nn.Linear(self.num_observations, 64),
-                                 nn.ReLU(),
-                                 nn.Linear(64, 64),
-                                 nn.ReLU(),
-                                 nn.Linear(64, self.num_actions))
-        self.log_std_parameter = nn.Parameter(torch.zeros(self.num_actions))
-
-    def compute(self, inputs, role):
-        # Pendulum-v1 action_space is -2 to 2
-        return 2 * torch.tanh(self.net(inputs["states"])), self.log_std_parameter, {}
-
-class Value(DeterministicMixin, Model):
-    def __init__(self, observation_space, action_space, device, clip_actions=False):
-        Model.__init__(self, observation_space, action_space, device)
-        DeterministicMixin.__init__(self, clip_actions)
-
-        self.net = nn.Sequential(nn.Linear(self.num_observations, 64),
-                                 nn.ReLU(),
-                                 nn.Linear(64, 64),
-                                 nn.ReLU(),
-                                 nn.Linear(64, 1))
-
-    def compute(self, inputs, role):
-        return self.net(inputs["states"]), {}
-
-
-model = RLModel()
-
+    return {'policy': model, 'value': model}
 
 
 # load and wrap the gymnasium environment.
@@ -77,13 +73,9 @@ device = env.device
 # instantiate a memory as rollout buffer (any memory can be used for this)
 memory = RandomMemory(memory_size=1024, num_envs=env.num_envs, device=device)
 
+models = get_shared_model(env)
 
-# instantiate the agent's models (function approximators).
-# PPO requires 2 models, visit its documentation for more details
-# https://skrl.readthedocs.io/en/latest/api/agents/ppo.html#models
-models = {}
-models["policy"] = Policy(env.observation_space, env.action_space, device, clip_actions=True)
-models["value"] = Value(env.observation_space, env.action_space, device)
+print(models)
 
 
 # configure and instantiate the agent (visit its documentation to see all the options)

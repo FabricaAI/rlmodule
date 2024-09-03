@@ -9,6 +9,19 @@ import torch
 
 from skrl import config, logger
 
+from enum import Enum
+
+# TODO remove this 
+class Shape(Enum):
+    """
+    Enum to select the shape of the model's inputs and outputs
+    """
+    ONE = 1
+    STATES = 0
+    OBSERVATIONS = 0
+    ACTIONS = -1
+    STATES_ACTIONS = -2
+
 
 class Model(torch.nn.Module):
     def __init__(self,
@@ -62,6 +75,43 @@ class Model(torch.nn.Module):
         self.num_actions = None if action_space is None else self._get_space_size(action_space)
 
         self._random_distribution = None
+
+
+    ### NEW methods: TODO maybe remove
+    def _get_num_units_by_shape(self, shape: Shape) -> int:
+        """Get the number of units in a layer by shape
+
+        :param model: Model to get the number of units for
+        :type model: Model
+        :param shape: Shape of the layer
+        :type shape: Shape or int
+
+        :return: Number of units in the layer
+        :rtype: int
+        """
+        num_units = {Shape.ONE: 1,
+                    Shape.STATES: self.num_observations,
+                    Shape.ACTIONS: self.num_actions,
+                    Shape.STATES_ACTIONS: self.num_observations + self.num_actions}
+        try:
+            return num_units[shape]
+        except:
+            return shape
+        
+    def _get_all_inputs(self, inputs):
+        """TODO(ll) comment"""
+        # TODO(ll) is it a bad design to invoke self.input_shape that only lives in inherited classes
+        if self.input_shape == Shape.STATES:
+            return inputs["states"]
+        # TODO(ll) does this ever makes sense to call without states?
+        elif self.input_shape == Shape.ACTIONS:
+            return inputs["taken_actions"]
+        elif self.input_shape == Shape.STATES_ACTIONS:
+            return torch.cat((inputs["states"], inputs["taken_actions"]), dim=1)
+        else:
+            raise ValueError(f"Unknown input shape: {self.input_shape}")
+        
+    ### new methods
 
     def _get_space_size(self,
                         space: Union[int, Sequence[int], gym.Space, gymnasium.Space],

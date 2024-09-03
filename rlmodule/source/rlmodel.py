@@ -11,21 +11,12 @@ from enum import Enum
 
 # TODO(ll): get independent of skrl
 # also remove skrl from pyproject.toml
-from .model import Model
-from skrl.models.torch import CategoricalMixin, DeterministicMixin, GaussianMixin, MultivariateGaussianMixin  # noqa
+from .model import Model, Shape
+from .deprecated import DeterministicMixin, GaussianMixin  # noqa
 
 # TODO(ll) consider moving this or part of it into skrl.models.torch
 # TODO(ll) MultivariatGaussian, Categorical, Multicategorical
 
-class Shape(Enum):
-    """
-    Enum to select the shape of the model's inputs and outputs
-    """
-    ONE = 1
-    STATES = 0
-    OBSERVATIONS = 0
-    ACTIONS = -1
-    STATES_ACTIONS = -2
 
 
 # TODO(ll) move to base ... and call from shared as well
@@ -216,7 +207,7 @@ class SharedRLModel(Model):
     def __init__(self, 
                 observation_space: Optional[Union[int, Tuple[int], gym.Space, gymnasium.Space]] = None,
                 action_space: Optional[Union[int, Tuple[int], gym.Space, gymnasium.Space]] = None,
-                input_shape: Shape = Shape.STATES,
+                input_shape: Shape = Shape.STATES, # TODO get rid of this?
                 device: Optional[Union[str, torch.device]] = None,
                 # TODO network, if None do pecreptron?
                 network: Optional[nn.Module] = None,

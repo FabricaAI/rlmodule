@@ -5,7 +5,9 @@ import torch.nn as nn
 
 # import the skrl components to build the RL system
 from skrl.agents.torch.ppo import PPO, PPO_DEFAULT_CONFIG
-from skrl.envs.wrappers.torch import wrap_env
+
+from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
+# from skrl.envs.wrappers.torch import wrap_env
 from skrl.memories.torch import RandomMemory
 from skrl.models.torch import DeterministicMixin, GaussianMixin, Model
 from skrl.resources.preprocessors.torch import RunningStandardScaler
@@ -59,7 +61,8 @@ except (gym.error.DeprecatedEnv, gym.error.VersionNotFound) as e:
     env_id = [spec for spec in gym.envs.registry if spec.startswith("Pendulum-v")][0]
     print("Pendulum-v1 not found. Trying {}".format(env_id))
     env = gym.vector.make(env_id, num_envs=4, asynchronous=False)
-env = wrap_env(env)
+
+env = GymnasiumWrapper(env)
 
 device = env.device
 
@@ -75,6 +78,7 @@ models = {}
 models["policy"] = Policy(env.observation_space, env.action_space, device, clip_actions=True)
 models["value"] = Value(env.observation_space, env.action_space, device)
 
+print(models)
 
 # configure and instantiate the agent (visit its documentation to see all the options)
 # https://skrl.readthedocs.io/en/latest/api/agents/ppo.html#configuration-and-hyperparameters
