@@ -1,7 +1,7 @@
 [project]
 name = "rlmodules"
 version = "0.1"
-description = "Modular and flexible library for reinforcement learning on PyTorch and JAX"
+description = "Flexible reinforcement learning models instantiators library"
 readme = "README.md"
 requires-python = ">=3.6"
 license = {text = "MIT License"}
@@ -20,22 +20,32 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Operating System :: OS Independent",
 ]
-# dependencies / optional-dependencies
 dependencies = [
-]
-[project.optional-dependencies]
-all = [
+  "gym",
+  "gymnasium",
   "torch>=1.9",
+  "skrl>=1.2.0",
 ]
+
+[project.optional-dependencies]
+
+# TODO(ll) only examples should depend on skrl, not the main code.
+skrl = [
+  "skrl>=1.2.0",
+]
+
+all = [
+  "skrl>=1.2.0",
+]
+
 # urls
 [project.urls]
 "Homepage" = "https://github.com/FabricaAI/rlmodule"
 "Documentation" = "https://github.com/FabricaAI/rlmodule"
 "Discussions" = "https://github.com/FabricaAI/rlmodule/discussions"
 "Bug Reports" = "https://github.com/FabricaAI/rlmodule/issues"
-"Say Thanks!" = "lopatovsky@gmail.com"
+"Say Thanks!" = "https://github.com/lopatovsky"
 "Source" = "https://github.com/FabricaAI/rlmodule"
-
 
 [tool.yapf]
 # run: yapf -p -m -i -r <folder>
