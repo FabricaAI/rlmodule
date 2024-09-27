@@ -3,7 +3,7 @@ import gymnasium as gym
 import torch
 import torch.nn as nn
 
-from rlmodule.source.rlmodel import RLModel, SharedRLModel, GaussianLayer, DeterministicLayer
+from rlmodule.source.rlmodel import SharedRLModel, GaussianLayer, DeterministicLayer
 from rlmodule.source.modules import MLP
 
 # import the skrl components to build the RL system

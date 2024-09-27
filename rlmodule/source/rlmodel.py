@@ -15,7 +15,7 @@ from .model import Model, Shape
 from .deprecated import DeterministicMixin, GaussianMixin  # noqa
 
 # TODO(ll) consider moving this or part of it into skrl.models.torch
-# TODO(ll) MultivariatGaussian, Categorical, Multicategorical
+# TODO(ll) MultivariateGaussian, Categorical, Multicategorical
 
 
 
@@ -33,7 +33,7 @@ class RLModel(Model):
                 action_space: Optional[Union[int, Tuple[int], gym.Space, gymnasium.Space]] = None,
                 input_shape: Shape = Shape.STATES,
                 device: Optional[Union[str, torch.device]] = None,
-                # TODO network, if None do pecreptron?
+                # TODO network, if None do perceptron?
                 network: Optional[nn.Module] = None,
                 # TODO can be combination of various types ... mixed layer
                 # but now it is dict
