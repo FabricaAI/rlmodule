@@ -22,6 +22,86 @@ from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
 # seed for reproducibility
 set_seed()  # e.g. `set_seed(42)` for fixed seed
 
+# TODO: move it from example :)
+from dataclasses import dataclass, MISSING
+from typing import Any, Mapping, Optional, Sequence, Tuple, Union
+
+@dataclass
+class NetworkCfg:
+    pass
+
+@dataclass
+class OutputLayerCfg:
+    class_type: type[nn.Module] = MISSING,
+    output_size: int = MISSING,  # TODO not int but something more clever
+    output_activation: nn.Module = MISSING,
+
+    clip_actions: bool = False,  # TODO what is clip action doing
+
+@dataclass
+class GaussianLayerCfg(OutputLayerCfg):
+    class_type: type[GaussianLayer] = GaussianLayer,
+    output_activation: nn.Module = nn.Tanh(),
+
+    clip_log_std: bool = True,
+    min_log_std: float = -20
+    max_log_std: float = 2,
+    initial_log_std: float = 0
+
+@dataclass
+class DeterministicLayerCfg(OutputLayerCfg):
+    class_type: type[DeterministicLayer] = DeterministicLayer,
+    output_size: 1
+    output_activation: nn.Module = nn.Identity(),
+
+
+@dataclass
+class BaseRLCfg:
+    class_type: type[RLModel] = MISSING
+    network: nn.Module = MISSING # todo NetworkCfg = MISSING,
+    device: Optional[Union[str, torch.device]] = MISSING,
+
+@dataclass
+class RLModelCfg(BaseRLCfg):
+    class_type: type[RLModel] = RLModel
+    output_layer:  type[OutputLayerCfg] = MISSING
+
+@dataclass
+class SharedRLModelCfg(BaseRLCfg):
+    class_type: type[SharedRLModel] = SharedRLModel
+    policy_output_layer: type[OutputLayerCfg] = MISSING
+    value_output_layer:  type[OutputLayerCfg] = MISSING
+
+def build_model(cfg: BaseRLCfg):
+
+    #1) network = create
+    
+    #2) get output size - what type?  ..what is Model init doing with action/observation space
+    network_output_size = 64    
+
+    #3) get output layers
+    # how to propagate params? ... class should eat Cfg!
+
+    def build_output_layer(layer_cfg):
+        return layer_cfg.class_type( device = cfg.device, input_size = network_output_size, cfg = layer_cfg),
+    
+    if isinstance(cfg, RLModelCfg):
+        rl_model = cfg.class_type( device = cfg.device,
+                        network = cfg.network,
+                        output_layer = build_output_layer( cfg.output_layer)
+                     )
+    elif isinstance(cfg, SharedRLModelCfg):
+        rl_model = cfg.class_type( device = cfg.device,
+                        network = cfg.network,
+                        policy_output_layer = build_output_layer( cfg.policy_output_layer ),
+                        value_output_layer = build_output_layer( cfg.value_output_layer ),
+                     )
+    else:
+        raise TypeError(
+                f" Received unsupported class: '{type(cfg)}'."
+            )
+    return rl_model
+
 def get_shared_model(env):
     # instantiate the agent's models (function approximators).
     params = {'input_size': env.observation_space.shape[0], 
@@ -30,90 +110,49 @@ def get_shared_model(env):
               }
     net = MLP(params)
 
-    model = SharedRLModel(
-        network=net,
-        device= device,
-        policy_layer= GaussianLayer(
-                output_size=env.action_space.shape[0],
-                output_activation=nn.Tanh(),
-                clip_actions=False,
-                clip_log_std=True,
-                min_log_std=-1.2,
-                max_log_std=2,
-                initial_log_std=0.2,
-            ),
-        value_layer= DeterministicLayer(
-                input_size=64,
-                output_size=1,
-                output_activation=nn.Identity(),
-            ),
-    )
-    
-    # variant II.  dict of layers
-    model = SharedRLModel(
-        network=net,
-        device= device,
-        output_layer={
-            'policy': GaussianLayer(
-                output_size=env.action_space.shape[0],
-                output_activation=nn.Tanh(),
-                clip_actions=False,
-                clip_log_std=True,
-                min_log_std=-1.2,
-                max_log_std=2,
-                initial_log_std=0.2,
-            ),
-            'value': DeterministicLayer(
-                input_size=64,
-                output_size=1,
-                output_activation=nn.Identity(),
-            ),
-        },
-    )
-
-    # variant III.  - config not the Layer instance
-    # dataclass / configclass - can convert?
-    model = SharedRLModel(
-        network=net,
-        device= device,
-        policy_layer= GaussianLayerCfg(
-                output_size=env.action_space.shape[0],
-                output_activation=nn.Tanh(),
-                clip_actions=False,
-                clip_log_std=True,
-                min_log_std=-1.2,
-                max_log_std=2,
-                initial_log_std=0.2,
-            ),
-        value_layer= DeterministicLayerCfg(
-                input_size=64,
-                output_size=1,
-                output_activation=nn.Identity(),
-            ),
-    )
-
     # variant IV - all config
     # net also config (optional)?
     model = build_model( 
         SharedRLModelCfg(
-            network=net,
+            network= net,
             device= device,
             policy_layer= GaussianLayerCfg(
                     output_size=env.action_space.shape[0],
-                    output_activation=nn.Tanh(),
-                    clip_actions=False,
-                    clip_log_std=True,
                     min_log_std=-1.2,
                     max_log_std=2,
                     initial_log_std=0.2,
                 ),
-            value_layer= DeterministicLayerCfg(
-                    input_size=64,
-                    output_size=1,
-                    output_activation=nn.Identity(),
-                ),
+            value_layer= DeterministicLayerCfg(),
         )
     )
+    # RLCfg(
+    #     Model
+    #     AgentCfg
+    #     MemoryCfg
+    # )
+
+    # build_model(cfg.model)
+
+    # cfg.agent.algoclass(
+    #     cfg.agent.algo_config
+    #     cfg.memory
+    # )
+
+    # SharedRLModelCfg(RLModelCfg){
+    #     class = SharedRLModel
+
+    # }
+
+    # net
+    # output layers.class()
+
+    # cfg.model.class(  net, output_layers )
+
+    #configclass -> dataclass - easy (Ron said)
+
+
+    # variant V:
+    # ideas?
 
 
     return {'policy': model, 'value': model}

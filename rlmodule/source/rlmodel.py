@@ -29,7 +29,6 @@ def contains_rnn_module(module: nn.Module, module_types):
 
 class RLModel(Model):
     def __init__(self, 
-                input_shape: Shape = Shape.STATES,
                 device: Optional[Union[str, torch.device]] = None,
                 # TODO network, if None do perceptron?
                 network: Optional[nn.Module] = None,
@@ -78,8 +77,6 @@ class RLModel(Model):
         #TODO(ll) ignore output scale for now because don't like, but may reintroduce
         #TODO(ll) where is activation tanh propagated (what used to be forgotten as a bug)
         # self.instantiator_output_scale = metadata["output_scale"]
-        
-        self.input_shape = input_shape
 
         self.net = network
         self.output_layer = output_layer
@@ -203,9 +200,7 @@ class RLModel(Model):
 
 class SharedRLModel(Model):
     def __init__(self, 
-                observation_space: Optional[Union[int, Tuple[int], gym.Space, gymnasium.Space]] = None,
-                action_space: Optional[Union[int, Tuple[int], gym.Space, gymnasium.Space]] = None,
-                input_shape: Shape = Shape.STATES, # TODO get rid of this?
+                #  
                 device: Optional[Union[str, torch.device]] = None,
                 # TODO network, if None do pecreptron?
                 network: Optional[nn.Module] = None,
