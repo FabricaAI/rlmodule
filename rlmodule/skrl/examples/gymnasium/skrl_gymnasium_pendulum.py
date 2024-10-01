@@ -3,7 +3,7 @@ import gymnasium as gym
 import torch
 import torch.nn as nn
 
-from rlmodule.source.rlmodel import SharedRLModel, GaussianLayer, DeterministicLayer
+from rlmodule.source.rlmodel import SharedRLModel, RLModel, GaussianLayer, DeterministicLayer
 from rlmodule.source.modules import MLP
 
 # import the skrl components to build the RL system
@@ -24,19 +24,38 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 
 def get_shared_model(env):
     # instantiate the agent's models (function approximators).
-    params = {'input_size': env.observation_space.shape[0], 'hidden_units': [64, 64, 64], 'activations': ['relu', 'relu', 'relu']}
+    params = {'input_size': env.observation_space.shape[0], 
+              'hidden_units': [64, 64, 64], 
+              'activations': [nn.ReLU(), nn.ReLU(), nn.ReLU()]
+              }
     net = MLP(params)
-    
+
     model = SharedRLModel(
-        observation_space=env.observation_space.shape[0], # TODO not do shape[0] but process box normally
-        action_space=env.observation_space.shape[0],
-        device=device,
         network=net,
+        device= device,
+        policy_layer= GaussianLayer(
+                output_size=env.action_space.shape[0],
+                output_activation=nn.Tanh(),
+                clip_actions=False,
+                clip_log_std=True,
+                min_log_std=-1.2,
+                max_log_std=2,
+                initial_log_std=0.2,
+            ),
+        value_layer= DeterministicLayer(
+                input_size=64,
+                output_size=1,
+                output_activation=nn.Identity(),
+            ),
+    )
+    
+    # variant II.  dict of layers
+    model = SharedRLModel(
+        network=net,
+        device= device,
         output_layer={
             'policy': GaussianLayer(
-                input_size=64,  # TODO
                 output_size=env.action_space.shape[0],
-                device=device,
                 output_activation=nn.Tanh(),
                 clip_actions=False,
                 clip_log_std=True,
@@ -47,13 +66,92 @@ def get_shared_model(env):
             'value': DeterministicLayer(
                 input_size=64,
                 output_size=1,
-                device=device,
                 output_activation=nn.Identity(),
             ),
         },
-    ).to(device) # TODO careful about device
+    )
+
+    # variant III.  - config not the Layer instance
+    # dataclass / configclass - can convert?
+    model = SharedRLModel(
+        network=net,
+        device= device,
+        policy_layer= GaussianLayerCfg(
+                output_size=env.action_space.shape[0],
+                output_activation=nn.Tanh(),
+                clip_actions=False,
+                clip_log_std=True,
+                min_log_std=-1.2,
+                max_log_std=2,
+                initial_log_std=0.2,
+            ),
+        value_layer= DeterministicLayerCfg(
+                input_size=64,
+                output_size=1,
+                output_activation=nn.Identity(),
+            ),
+    )
+
+    # variant IV - all config
+    # net also config (optional)?
+    model = build_model( 
+        SharedRLModelCfg(
+            network=net,
+            device= device,
+            policy_layer= GaussianLayerCfg(
+                    output_size=env.action_space.shape[0],
+                    output_activation=nn.Tanh(),
+                    clip_actions=False,
+                    clip_log_std=True,
+                    min_log_std=-1.2,
+                    max_log_std=2,
+                    initial_log_std=0.2,
+                ),
+            value_layer= DeterministicLayerCfg(
+                    input_size=64,
+                    output_size=1,
+                    output_activation=nn.Identity(),
+                ),
+        )
+    )
+
 
     return {'policy': model, 'value': model}
+
+def get_separate_model(env):
+    # instantiate the agent's models (function approximators).
+    params = {'input_size': env.observation_space.shape[0], 
+              'hidden_units': [64, 64, 64], 
+              'activations': ['relu', 'relu', 'relu']
+              }
+    net = MLP(params)
+
+    policy_model = RLModel(
+        network=net,
+        device= device,
+        output_layer = GaussianLayer(
+                input_size=64,  # TODO
+                output_size=env.action_space.shape[0],
+                output_activation=nn.Tanh(),
+                clip_actions=False,
+                clip_log_std=True,
+                min_log_std=-1.2,
+                max_log_std=2,
+                initial_log_std=0.2,
+            ),
+    )
+
+    value_model = RLModel(
+        network=net,
+        device= device,
+        output_layer = DeterministicLayer(
+                input_size=64,
+                output_size=1,
+                output_activation=nn.Identity(),
+            ),
+    )
+
+    return {'policy': policy_model, 'value': value_model}
 
 
 # load and wrap the gymnasium environment.

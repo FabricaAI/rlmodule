@@ -29,8 +29,6 @@ def contains_rnn_module(module: nn.Module, module_types):
 
 class RLModel(Model):
     def __init__(self, 
-                observation_space: Optional[Union[int, Tuple[int], gym.Space, gymnasium.Space]] = None,
-                action_space: Optional[Union[int, Tuple[int], gym.Space, gymnasium.Space]] = None,
                 input_shape: Shape = Shape.STATES,
                 device: Optional[Union[str, torch.device]] = None,
                 # TODO network, if None do perceptron?

@@ -1,53 +1,53 @@
 import torch
 import torch.nn as nn
 
-# todo consider get rid of this and just pass torch.nn stuff
-def _get_activation_function(activation: str) -> nn.Module:
-    """Get the activation function
+# # todo consider get rid of this and just pass torch.nn stuff
+# def _get_activation_function(activation: str) -> nn.Module:
+#     """Get the activation function
 
-    Supported activation functions:
+#     Supported activation functions:
 
-    - "elu"
-    - "leaky_relu"
-    - "relu"
-    - "selu"
-    - "sigmoid"
-    - "softmax"
-    - "softplus"
-    - "softsign"
-    - "tanh"
+#     - "elu"
+#     - "leaky_relu"
+#     - "relu"
+#     - "selu"
+#     - "sigmoid"
+#     - "softmax"
+#     - "softplus"
+#     - "softsign"
+#     - "tanh"
 
-    :param activation: activation function name.
-                       If activation is an empty string, a placeholder will be returned (``torch.nn.Identity()``)
-    :type activation: str
+#     :param activation: activation function name.
+#                        If activation is an empty string, a placeholder will be returned (``torch.nn.Identity()``)
+#     :type activation: str
 
-    :raises: ValueError if activation is not a valid activation function
+#     :raises: ValueError if activation is not a valid activation function
 
-    :return: activation function
-    :rtype: nn.Module
-    """
-    if not activation:
-        return torch.nn.Identity()
-    elif activation == "relu":
-        return torch.nn.ReLU()
-    elif activation == "tanh":
-        return torch.nn.Tanh()
-    elif activation == "sigmoid":
-        return torch.nn.Sigmoid()
-    elif activation == "leaky_relu":
-        return torch.nn.LeakyReLU()
-    elif activation == "elu":
-        return torch.nn.ELU()
-    elif activation == "softplus":
-        return torch.nn.Softplus()
-    elif activation == "softsign":
-        return torch.nn.Softsign()
-    elif activation == "selu":
-        return torch.nn.SELU()
-    elif activation == "softmax":
-        return torch.nn.Softmax()
-    else:
-        raise ValueError(f"Unknown activation function: {activation}")
+#     :return: activation function
+#     :rtype: nn.Module
+#     """
+#     if not activation:
+#         return torch.nn.Identity()
+#     elif activation == "relu":
+#         return torch.nn.ReLU()
+#     elif activation == "tanh":
+#         return torch.nn.Tanh()
+#     elif activation == "sigmoid":
+#         return torch.nn.Sigmoid()
+#     elif activation == "leaky_relu":
+#         return torch.nn.LeakyReLU()
+#     elif activation == "elu":
+#         return torch.nn.ELU()
+#     elif activation == "softplus":
+#         return torch.nn.Softplus()
+#     elif activation == "softsign":
+#         return torch.nn.Softsign()
+#     elif activation == "selu":
+#         return torch.nn.SELU()
+#     elif activation == "softmax":
+#         return torch.nn.Softmax()
+#     else:
+#         raise ValueError(f"Unknown activation function: {activation}")
 
 
 
