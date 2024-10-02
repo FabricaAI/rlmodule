@@ -26,6 +26,7 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 # TODO: move it from example :)
 from dataclasses import dataclass, MISSING
 from typing import Any, Mapping, Optional, Sequence, Tuple, Union
+from rlmodule.source.modules import get_output_size
 
 @dataclass
 class NetworkCfg:
@@ -59,6 +60,7 @@ class DeterministicLayerCfg(OutputLayerCfg):
 
 @dataclass
 class BaseRLCfg:
+    input_size: int = MISSING # change type
     network: nn.Module = MISSING
     device: Optional[Union[str, torch.device]] = MISSING
     class_type: type[RLModel] = MISSING
@@ -79,10 +81,10 @@ def build_model(cfg: BaseRLCfg):
     #1) network = create # for now it is created, todo from config
     
     #2) get output size - what type?  ..what is Model init doing with action/observation space
-    network_output_size = 64  # TODO generate   
+    
+    network_output_size = get_output_size(cfg.network, cfg.input_size)
 
     def build_output_layer(layer_cfg):
-        print("x", layer_cfg.class_type)
         return layer_cfg.class_type( device = cfg.device, input_size = network_output_size, cfg = layer_cfg)
     
     if isinstance(cfg, RLModelCfg):
@@ -117,6 +119,7 @@ def get_shared_model(env):
     # net also config (optional)?
     model = build_model( 
         SharedRLModelCfg(
+            input_size = env.observation_space.shape[0],
             network= net,
             device= device,
             policy_output_layer= GaussianLayerCfg(
