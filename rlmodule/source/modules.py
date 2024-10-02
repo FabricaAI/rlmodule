@@ -74,23 +74,19 @@ def get_output_size(module, input_shape):
 
 
 class MLP(nn.Module):
-    def __init__(self, params):
+    def __init__(self, cfg):
         super().__init__()
-
-        input_size = params['input_size']
-        hidden_units = params['hidden_units']
-        activations = params['activations']
 
         # input layer
         layers = [
-            nn.Linear(input_size, hidden_units[0]),
-            activations[0],
+            nn.Linear(cfg.input_size, cfg.hidden_units[0]),
+            cfg.activations[0],
         ]
 
         # hidden layers
-        for i in range(len(hidden_units) - 1):
-            layers.append(nn.Linear(hidden_units[i], hidden_units[i + 1]))
-            layers.append(activations[i + 1])
+        for i in range(len(cfg.hidden_units) - 1):
+            layers.append(nn.Linear(cfg.hidden_units[i], cfg.hidden_units[i + 1]))
+            layers.append(cfg.activations[i + 1])
 
         self.mlp = nn.Sequential(*layers)
 
@@ -99,8 +95,12 @@ class MLP(nn.Module):
 
 
 def example_MLP():
-    params = {'input_size': 517, 'hidden_units': [2048, 1024, 1024, 512], 'activations': ['elu', 'elu', 'elu', 'elu']}
-    return MLP(params)
+    cfg = MlpCfg(
+        input_size = 517,
+        hidden_units = [2048, 1024, 1024, 512],
+        activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+    )
+    return MLP(cfg)
 
 
 def get_cnn_layer(params):

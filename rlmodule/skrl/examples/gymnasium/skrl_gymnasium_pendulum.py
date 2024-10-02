@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 from rlmodule.source.rlmodel import SharedRLModel, RLModel, GaussianLayer, DeterministicLayer
-from rlmodule.source.modules import MLP
+from rlmodule.source.modules import MLP, RNN, GRU, LSTM, RnnMlp, RnnBase
 
 # import the skrl components to build the RL system
 from skrl.agents.torch.ppo import PPO, PPO_DEFAULT_CONFIG
@@ -28,9 +28,51 @@ from dataclasses import dataclass, MISSING
 from typing import Any, Mapping, Optional, Sequence, Tuple, Union
 from rlmodule.source.modules import get_output_size
 
+# Net
+from dataclasses import dataclass, MISSING, field
+from collections.abc import Callable
+from typing import List
+
 @dataclass
 class NetworkCfg:
-    pass # TODO
+    input_size: int = MISSING # change type
+    module: Union[nn.Module, Callable[..., nn.Module]] = MISSING
+    
+# @dataclass 
+# class CustomNetworkCfg(NetworkCfg):
+    
+
+@dataclass
+class MlpCfg(NetworkCfg):
+    hidden_units: List[int] = field(default_factory=lambda: [64, 64]) # I want configclass :(
+    activations: List[nn.Module] = field(default_factory=lambda: [nn.ReLU(), nn.ReLU()])
+    module: type[MLP] = MLP
+
+@dataclass
+class RnnBaseCfg(NetworkCfg):
+    num_envs: int = 4
+    num_layers: int = 1
+    hidden_size: int = 32
+    sequence_length: int = 16
+
+@dataclass
+class RnnCfg(RnnBaseCfg):
+    module: type[RNN] = RNN
+
+@dataclass
+class GruCfg(RnnBaseCfg):
+    module: type[GRU] = GRU
+
+@dataclass
+class LstmCfg(RnnBaseCfg):
+    module: type[LSTM] = LSTM
+
+# @dataclass
+# class RnnMlpCfg(NetworkCfg):
+#     rnn: type[RnnBaseCfg] = MISSING
+#     mlp: type[MlpCfg] = MISSING
+#     module: type[RnnMlp] = RnnMlp
+
 
 @dataclass
 class OutputLayerCfg:
@@ -57,10 +99,8 @@ class DeterministicLayerCfg(OutputLayerCfg):
     output_size: int = 1
     output_activation: nn.Module = nn.Identity()
 
-
 @dataclass
 class BaseRLCfg:
-    input_size: int = MISSING # change type
     network: nn.Module = MISSING
     device: Optional[Union[str, torch.device]] = MISSING
     class_type: type[RLModel] = MISSING
@@ -81,20 +121,22 @@ def build_model(cfg: BaseRLCfg):
     #1) network = create # for now it is created, todo from config
     
     #2) get output size - what type?  ..what is Model init doing with action/observation space
+
+    net = cfg.network.module(cfg.network)
     
-    network_output_size = get_output_size(cfg.network, cfg.input_size)
+    network_output_size = get_output_size(net, cfg.network.input_size)
 
     def build_output_layer(layer_cfg):
         return layer_cfg.class_type( device = cfg.device, input_size = network_output_size, cfg = layer_cfg)
     
     if isinstance(cfg, RLModelCfg):
         rl_model = cfg.class_type( device = cfg.device,
-                        network = cfg.network,
+                        network = net,
                         output_layer = build_output_layer( cfg.output_layer)
                      )
     elif isinstance(cfg, SharedRLModelCfg):
         rl_model = cfg.class_type( device = cfg.device,
-                        network = cfg.network,
+                        network = net,
                         policy_output_layer = build_output_layer( cfg.policy_output_layer ),
                         value_output_layer = build_output_layer( cfg.value_output_layer ),
                      )
@@ -109,18 +151,31 @@ def build_model(cfg: BaseRLCfg):
 
 def get_shared_model(env):
     # instantiate the agent's models (function approximators).
-    params = {'input_size': env.observation_space.shape[0], 
-              'hidden_units': [64, 64, 64], 
-              'activations': [nn.ReLU(), nn.ReLU(), nn.ReLU()]
-              }
-    net = MLP(params)
+    # params = {'input_size': env.observation_space.shape[0], 
+    #           'hidden_units': [64, 64, 64], 
+    #           'activations': [nn.ReLU(), nn.ReLU(), nn.ReLU()]
+    #           }
+    # net = MLP(params)
+
+    net_cfg = MlpCfg(
+        input_size = env.observation_space.shape[0],
+        hidden_units = [64, 64, 64],
+        activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+    )
+
+    # rnn_cfg = RnnCfg(
+    #     input_size = env.observation_space.shape[0],
+    #     num_envs = env.num_envs,
+    #     num_layers = 1,
+    #     hidden_size = 32,
+    #     sequence_length = 16,
+    # )
 
     # variant IV - all config
     # net also config (optional)?
     model = build_model( 
         SharedRLModelCfg(
-            input_size = env.observation_space.shape[0],
-            network= net,
+            network= net_cfg,
             device= device,
             policy_output_layer= GaussianLayerCfg(
                     output_size=env.action_space.shape[0],
