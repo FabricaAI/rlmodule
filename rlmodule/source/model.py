@@ -25,8 +25,6 @@ class Shape(Enum):
 
 class Model(torch.nn.Module):
     def __init__(self,
-                 observation_space: Union[int, Sequence[int], gym.Space, gymnasium.Space],
-                 action_space: Union[int, Sequence[int], gym.Space, gymnasium.Space],
                  device: Optional[Union[str, torch.device]] = None) -> None:
         """Base class representing a function approximator
 
@@ -69,47 +67,26 @@ class Model(torch.nn.Module):
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") if device is None else torch.device(device)
 
-        self.observation_space = observation_space
-        self.action_space = action_space
-        self.num_observations = None if observation_space is None else self._get_space_size(observation_space)
-        self.num_actions = None if action_space is None else self._get_space_size(action_space)
+        # self.observation_space = observation_space
+        # self.action_space = action_space
+        # self.num_observations = None if observation_space is None else self._get_space_size(observation_space)
+        # self.num_actions = None if action_space is None else self._get_space_size(action_space)
 
         self._random_distribution = None
 
-
-    ### NEW methods: TODO maybe remove
-    def _get_num_units_by_shape(self, shape: Shape) -> int:
-        """Get the number of units in a layer by shape
-
-        :param model: Model to get the number of units for
-        :type model: Model
-        :param shape: Shape of the layer
-        :type shape: Shape or int
-
-        :return: Number of units in the layer
-        :rtype: int
-        """
-        num_units = {Shape.ONE: 1,
-                    Shape.STATES: self.num_observations,
-                    Shape.ACTIONS: self.num_actions,
-                    Shape.STATES_ACTIONS: self.num_observations + self.num_actions}
-        try:
-            return num_units[shape]
-        except:
-            return shape
         
-    def _get_all_inputs(self, inputs):
-        """TODO(ll) comment"""
-        # TODO(ll) is it a bad design to invoke self.input_shape that only lives in inherited classes
-        if self.input_shape == Shape.STATES:
-            return inputs["states"]
-        # TODO(ll) does this ever makes sense to call without states?
-        elif self.input_shape == Shape.ACTIONS:
-            return inputs["taken_actions"]
-        elif self.input_shape == Shape.STATES_ACTIONS:
-            return torch.cat((inputs["states"], inputs["taken_actions"]), dim=1)
-        else:
-            raise ValueError(f"Unknown input shape: {self.input_shape}")
+    # def _get_all_inputs(self, inputs):
+    #     """TODO(ll) comment"""
+    #     # TODO(ll) is it a bad design to invoke self.input_shape that only lives in inherited classes
+    #     if self.input_shape == Shape.STATES:
+    #         return inputs["states"]
+    #     # TODO(ll) does this ever makes sense to call without states?
+    #     elif self.input_shape == Shape.ACTIONS:
+    #         return inputs["taken_actions"]
+    #     elif self.input_shape == Shape.STATES_ACTIONS:
+    #         return torch.cat((inputs["states"], inputs["taken_actions"]), dim=1)
+    #     else:
+    #         raise ValueError(f"Unknown input shape: {self.input_shape}")
         
     ### new methods
 
@@ -268,37 +245,38 @@ class Model(torch.nn.Module):
                 return output
         raise ValueError(f"Space type {type(space)} not supported")
 
-    def random_act(self,
-                   inputs: Mapping[str, Union[torch.Tensor, Any]],
-                   role: str = "") -> Tuple[torch.Tensor, None, Mapping[str, Union[torch.Tensor, Any]]]:
-        """Act randomly according to the action space
+    # No need to suport?
+    # def random_act(self,
+    #                inputs: Mapping[str, Union[torch.Tensor, Any]],
+    #                role: str = "") -> Tuple[torch.Tensor, None, Mapping[str, Union[torch.Tensor, Any]]]:
+    #     """Act randomly according to the action space
 
-        :param inputs: Model inputs. The most common keys are:
+    #     :param inputs: Model inputs. The most common keys are:
 
-                       - ``"states"``: state of the environment used to make the decision
-                       - ``"taken_actions"``: actions taken by the policy for the given states
-        :type inputs: dict where the values are typically torch.Tensor
-        :param role: Role play by the model (default: ``""``)
-        :type role: str, optional
+    #                    - ``"states"``: state of the environment used to make the decision
+    #                    - ``"taken_actions"``: actions taken by the policy for the given states
+    #     :type inputs: dict where the values are typically torch.Tensor
+    #     :param role: Role play by the model (default: ``""``)
+    #     :type role: str, optional
 
-        :raises NotImplementedError: Unsupported action space
+    #     :raises NotImplementedError: Unsupported action space
 
-        :return: Model output. The first component is the action to be taken by the agent
-        :rtype: tuple of torch.Tensor, None, and dict
-        """
-        # discrete action space (Discrete)
-        if issubclass(type(self.action_space), gym.spaces.Discrete) or issubclass(type(self.action_space), gymnasium.spaces.Discrete):
-            return torch.randint(self.action_space.n, (inputs["states"].shape[0], 1), device=self.device), None, {}
-        # continuous action space (Box)
-        elif issubclass(type(self.action_space), gym.spaces.Box) or issubclass(type(self.action_space), gymnasium.spaces.Box):
-            if self._random_distribution is None:
-                self._random_distribution = torch.distributions.uniform.Uniform(
-                    low=torch.tensor(self.action_space.low[0], device=self.device, dtype=torch.float32),
-                    high=torch.tensor(self.action_space.high[0], device=self.device, dtype=torch.float32))
+    #     :return: Model output. The first component is the action to be taken by the agent
+    #     :rtype: tuple of torch.Tensor, None, and dict
+    #     """
+    #     # discrete action space (Discrete)
+    #     if issubclass(type(self.action_space), gym.spaces.Discrete) or issubclass(type(self.action_space), gymnasium.spaces.Discrete):
+    #         return torch.randint(self.action_space.n, (inputs["states"].shape[0], 1), device=self.device), None, {}
+    #     # continuous action space (Box)
+    #     elif issubclass(type(self.action_space), gym.spaces.Box) or issubclass(type(self.action_space), gymnasium.spaces.Box):
+    #         if self._random_distribution is None:
+    #             self._random_distribution = torch.distributions.uniform.Uniform(
+    #                 low=torch.tensor(self.action_space.low[0], device=self.device, dtype=torch.float32),
+    #                 high=torch.tensor(self.action_space.high[0], device=self.device, dtype=torch.float32))
 
-            return self._random_distribution.sample(sample_shape=(inputs["states"].shape[0], self.num_actions)), None, {}
-        else:
-            raise NotImplementedError(f"Action space type ({type(self.action_space)}) not supported")
+    #         return self._random_distribution.sample(sample_shape=(inputs["states"].shape[0], self.num_actions)), None, {}
+    #     else:
+    #         raise NotImplementedError(f"Action space type ({type(self.action_space)}) not supported")
 
     def init_parameters(self, method_name: str = "normal_", *args, **kwargs) -> None:
         """Initialize the model parameters according to the specified method name

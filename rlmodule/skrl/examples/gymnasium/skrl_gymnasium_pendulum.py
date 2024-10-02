@@ -22,13 +22,14 @@ from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
 # seed for reproducibility
 set_seed()  # e.g. `set_seed(42)` for fixed seed
 
+# BEGIN LIB CODE
 # TODO: move it from example :)
 from dataclasses import dataclass, MISSING
 from typing import Any, Mapping, Optional, Sequence, Tuple, Union
 
 @dataclass
 class NetworkCfg:
-    pass
+    pass # TODO
 
 @dataclass
 class OutputLayerCfg:
@@ -40,50 +41,49 @@ class OutputLayerCfg:
 
 @dataclass
 class GaussianLayerCfg(OutputLayerCfg):
-    class_type: type[GaussianLayer] = GaussianLayer,
-    output_activation: nn.Module = nn.Tanh(),
+    class_type: type[GaussianLayer] = GaussianLayer
+    output_activation: nn.Module = nn.Tanh()
 
-    clip_log_std: bool = True,
+    clip_log_std: bool = True
     min_log_std: float = -20
-    max_log_std: float = 2,
+    max_log_std: float = 2
     initial_log_std: float = 0
+    reduction: str = "sum"
 
 @dataclass
 class DeterministicLayerCfg(OutputLayerCfg):
-    class_type: type[DeterministicLayer] = DeterministicLayer,
-    output_size: 1
-    output_activation: nn.Module = nn.Identity(),
+    class_type: type[DeterministicLayer] = DeterministicLayer
+    output_size: int = 1
+    output_activation: nn.Module = nn.Identity()
 
 
 @dataclass
 class BaseRLCfg:
+    network: nn.Module = MISSING
+    device: Optional[Union[str, torch.device]] = MISSING
     class_type: type[RLModel] = MISSING
-    network: nn.Module = MISSING # todo NetworkCfg = MISSING,
-    device: Optional[Union[str, torch.device]] = MISSING,
 
 @dataclass
 class RLModelCfg(BaseRLCfg):
+    output_layer: type[OutputLayerCfg] = GaussianLayerCfg()
     class_type: type[RLModel] = RLModel
-    output_layer:  type[OutputLayerCfg] = MISSING
 
 @dataclass
 class SharedRLModelCfg(BaseRLCfg):
+    policy_output_layer: type[OutputLayerCfg] = GaussianLayerCfg() # TODO .. MISSING
+    value_output_layer: type[OutputLayerCfg] = DeterministicLayerCfg()
     class_type: type[SharedRLModel] = SharedRLModel
-    policy_output_layer: type[OutputLayerCfg] = MISSING
-    value_output_layer:  type[OutputLayerCfg] = MISSING
 
 def build_model(cfg: BaseRLCfg):
 
-    #1) network = create
+    #1) network = create # for now it is created, todo from config
     
     #2) get output size - what type?  ..what is Model init doing with action/observation space
-    network_output_size = 64    
-
-    #3) get output layers
-    # how to propagate params? ... class should eat Cfg!
+    network_output_size = 64  # TODO generate   
 
     def build_output_layer(layer_cfg):
-        return layer_cfg.class_type( device = cfg.device, input_size = network_output_size, cfg = layer_cfg),
+        print("x", layer_cfg.class_type)
+        return layer_cfg.class_type( device = cfg.device, input_size = network_output_size, cfg = layer_cfg)
     
     if isinstance(cfg, RLModelCfg):
         rl_model = cfg.class_type( device = cfg.device,
@@ -102,6 +102,9 @@ def build_model(cfg: BaseRLCfg):
             )
     return rl_model
 
+
+# END LIB CODE
+
 def get_shared_model(env):
     # instantiate the agent's models (function approximators).
     params = {'input_size': env.observation_space.shape[0], 
@@ -116,13 +119,13 @@ def get_shared_model(env):
         SharedRLModelCfg(
             network= net,
             device= device,
-            policy_layer= GaussianLayerCfg(
+            policy_output_layer= GaussianLayerCfg(
                     output_size=env.action_space.shape[0],
                     min_log_std=-1.2,
                     max_log_std=2,
                     initial_log_std=0.2,
                 ),
-            value_layer= DeterministicLayerCfg(),
+            value_output_layer= DeterministicLayerCfg(),
         )
     )
     # RLCfg(

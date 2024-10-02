@@ -84,13 +84,13 @@ class MLP(nn.Module):
         # input layer
         layers = [
             nn.Linear(input_size, hidden_units[0]),
-            _get_activation_function(activations[0]),
+            activations[0],
         ]
 
         # hidden layers
         for i in range(len(hidden_units) - 1):
             layers.append(nn.Linear(hidden_units[i], hidden_units[i + 1]))
-            layers.append(_get_activation_function(activations[i + 1]))
+            layers.append(activations[i + 1])
 
         self.mlp = nn.Sequential(*layers)
 

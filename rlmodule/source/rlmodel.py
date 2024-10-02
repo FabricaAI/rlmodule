@@ -70,7 +70,7 @@ class RLModel(Model):
         :type reduction: str, optional
         """
 
-        super().__init__(observation_space, action_space, device)
+        super().__init__( device)
         # GaussianMixin.__init__(self, clip_actions, clip_log_std, min_log_std, max_log_std, reduction)
 
         #TODO(ll) other input types ..gym, tuple?
@@ -206,7 +206,8 @@ class SharedRLModel(Model):
                 network: Optional[nn.Module] = None,
                 # TODO can be combination of various types ... mixed layer
                 # but now it is dict
-                output_layer: Optional[nn.Module] = None,
+                policy_output_layer: Optional[nn.Module] = None,
+                value_output_layer: Optional[nn.Module] = None,
                 ):
         #TODO(ll) description
         """Gaussian model
@@ -242,7 +243,7 @@ class SharedRLModel(Model):
         :type reduction: str, optional
         """
 
-        super().__init__(observation_space, action_space, device)
+        super().__init__(device)
         # GaussianMixin.__init__(self, clip_actions, clip_log_std, min_log_std, max_log_std, reduction)
 
         #TODO(ll) other input types ..gym, tuple?
@@ -250,13 +251,12 @@ class SharedRLModel(Model):
         #TODO(ll) where is activation tanh propagated (what used to be forgotten as a bug)
         # self.instantiator_output_scale = metadata["output_scale"]
         
-        self.input_shape = input_shape
 
         self.net = network
         # self.output_layer = output_layer
 
-        self.policy_output_layer = output_layer["policy"]
-        self.value_output_layer = output_layer["value"]
+        self.policy_output_layer = policy_output_layer
+        self.value_output_layer = value_output_layer
 
         self._lstm = contains_rnn_module( self, nn.LSTM)
         self._rnn = contains_rnn_module( self, (nn.LSTM, nn.RNN, nn.GRU))
@@ -343,7 +343,9 @@ class SharedRLModel(Model):
             inputs: Mapping[str, Union[torch.Tensor, Any]],
             role: str = "") -> Tuple[torch.Tensor, Union[torch.Tensor, None], Mapping[str, Union[torch.Tensor, Any]]]:
         
-        states = self._get_all_inputs(inputs) # TODO(ll) rename to get_all_states
+        
+        #states = self._get_all_inputs(inputs) # TODO(ll) rename to get_all_states
+        states = inputs["states"]
 
         if not self._have_cached_states(states):
             # TODO(ll) if one of the models is not rnn ... and PPO_RNN is called what happens?
@@ -378,20 +380,21 @@ class SharedRLModel(Model):
         # return output * self.instantiator_output_scale, self.log_std_parameter, {}
         # return output, self.log_std_parameter, output_dict
 
+# TODO ABC?
+class OutputLayer(nn.Module):
+    # TODO how to pass device, needs?
+    def __init__(self, device, input_size, cfg):
+        super().__init__()
+        self.device = device
+        self._input_size = input_size
+        self._cfg = cfg
 
-class GaussianLayer(nn.Module):
+
+class GaussianLayer(OutputLayer):
     def __init__(self, 
-                input_size,   # TODO(ll)
-                output_size,  # TODO(ll) allow here the Box input type and handle or throw away shapes. 
                 device,
-                output_shape: Shape = Shape.ACTIONS,
-                output_activation: nn.Module = nn.Tanh(), 
-                clip_actions: bool = False,
-                clip_log_std: bool = True,
-                min_log_std: float = -20,
-                max_log_std: float = 2,
-                initial_log_std: float = 0,
-                reduction="sum",
+                input_size,
+                cfg
                 ):
         """Gaussian model
 
@@ -425,55 +428,19 @@ class GaussianLayer(nn.Module):
                         function is returned as a tensor of shape ``(num_samples, num_actions)`` instead of ``(num_samples, 1)``
         :type reduction: str, optional
         """
-        super().__init__()
-        # GaussianMixin.__init__(self, clip_actions, clip_log_std, min_log_std, max_log_std, reduction)
+        super().__init__(device, input_size, cfg)
 
-        self.mixin = GaussianMixin(clip_actions, clip_log_std, min_log_std, max_log_std, reduction)
-
-        #TODO(ll) !!!!!!! propagate device TODO(ll) is device used somewhere, A: it is used in Mixin and not propagated yet.
-        self.device=device
-
-
-        #TODO(ll) ignore output scale for now because don't like, but may reintroduce
-        #TODO(ll) where is activation tanh propagated (what used to be forgotten as a bug)
-        # self.instantiator_output_scale = metadata["output_scale"]
-        
-        self.output_shape = output_shape
-        # self.output_activation = output_activation
-        
-        # TODO(ll) propagate output activation from outside. Maybe actually propagate function, so it is easily customable and can include scaling.
-        #     -- it can default to tanh here, and to identity in deterministic
-        #
-        # if metadata[0]["output_activation"] is not None:
-        #     layers.append(_get_activation_function(metadata[0]["output_activation"]))
+        # TODO pass just config, or get rid of mixin all together
+        self.mixin = GaussianMixin(cfg.clip_actions, cfg.clip_log_std, cfg.min_log_std, cfg.max_log_std, cfg.reduction)
         
         self.net = nn.Sequential(
-            nn.Linear(input_size,  output_size), # self._get_num_units_by_shape(self.output_shape)),
-            output_activation)
+            nn.Linear(input_size,  cfg.output_size), 
+            cfg.output_activation
+        )
 
         self.log_std_parameter = nn.Parameter(
-            initial_log_std * torch.ones( output_size )) #self._get_num_units_by_shape(self.output_shape)))
-        
-    # TODO(ll) this already lives in Model. move to utils
-    def _get_num_units_by_shape(self, shape: Shape) -> int:
-        """Get the number of units in a layer by shape
-
-        :param model: Model to get the number of units for
-        :type model: Model
-        :param shape: Shape of the layer
-        :type shape: Shape or int
-
-        :return: Number of units in the layer
-        :rtype: int
-        """
-        num_units = {Shape.ONE: 1,
-                    Shape.STATES: self.num_observations,
-                    Shape.ACTIONS: self.num_actions,
-                    Shape.STATES_ACTIONS: self.num_observations + self.num_actions}
-        try:
-            return num_units[shape]
-        except:
-            return shape
+            cfg.initial_log_std * torch.ones( cfg.output_size )
+        )
         
         
     def forward(self, input, taken_actions, outputs_dict):
@@ -498,14 +465,11 @@ class GaussianLayer(nn.Module):
         return output, self.log_std_parameter, output_dict
 
 
-class DeterministicLayer(torch.nn.Module, DeterministicMixin):
+class DeterministicLayer(OutputLayer):
     def __init__(self, 
-                 input_size,
-                 output_size,
-                 device,
-                 output_shape: Shape = Shape.ONE,
-                 output_activation: nn.Module = nn.Tanh(), 
-                 clip_actions: bool = False,
+                device,
+                input_size,
+                cfg
                 ):
         """Deterministic model
 
@@ -539,17 +503,12 @@ class DeterministicLayer(torch.nn.Module, DeterministicMixin):
         :rtype: Model
         """
 
-        super().__init__()
-        self.mixin = DeterministicMixin(clip_actions)
-
-        #TODO(ll) !!!!!!propagate device
-        self.device=device
-
-        self.output_shape = output_shape
+        super().__init__(device, input_size, cfg)
+        self.mixin = DeterministicMixin(cfg.clip_actions)
 
         self.net = nn.Sequential(
-            nn.Linear(input_size, output_size), # self._get_num_units_by_shape(self.output_shape)), 
-            output_activation
+            nn.Linear(input_size, cfg.output_size), 
+            cfg.output_activation
         )
 
     def forward(self, input, taken_actions, outputs_dict):

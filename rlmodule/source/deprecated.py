@@ -72,13 +72,14 @@ class GaussianMixin:
               )
             )
         """
-        self._clip_actions = clip_actions and (issubclass(type(self.action_space), gym.Space) or \
-            issubclass(type(self.action_space), gymnasium.Space))
+        # TODO return this functionality
+        # self._clip_actions = clip_actions and (issubclass(type(self.action_space), gym.Space) or \
+        #     issubclass(type(self.action_space), gymnasium.Space))
 
-        if self._clip_actions:
-            # TODO(ll) the code assume it will be inherited ... self.device is not set anywhere.  
-            self._clip_actions_min = torch.tensor(self.action_space.low, device=self.device, dtype=torch.float32)
-            self._clip_actions_max = torch.tensor(self.action_space.high, device=self.device, dtype=torch.float32)
+        # if self._clip_actions:
+        #     # TODO(ll) the code assume it will be inherited ... self.device is not set anywhere.  
+        #     self._clip_actions_min = torch.tensor(self.action_space.low, device=self.device, dtype=torch.float32)
+        #     self._clip_actions_max = torch.tensor(self.action_space.high, device=self.device, dtype=torch.float32)
 
         self._clip_log_std = clip_log_std
         self._log_std_min = min_log_std
@@ -194,8 +195,9 @@ class GaussianMixin:
         actions = self._distribution.rsample()
 
         # clip actions
-        if self._clip_actions:
-            actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
+        # TODO enable
+        # if self._clip_actions:
+        #     actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
         
         if taken_actions is None:
             taken_actions = actions
@@ -309,12 +311,14 @@ class DeterministicMixin:
               )
             )
         """
-        self._clip_actions = clip_actions and (issubclass(type(self.action_space), gym.Space) or \
-            issubclass(type(self.action_space), gymnasium.Space))
+        pass
+        # TODO return this functionality
+        # self._clip_actions = clip_actions and (issubclass(type(self.action_space), gym.Space) or \
+        #     issubclass(type(self.action_space), gymnasium.Space))
 
-        if self._clip_actions:
-            self._clip_actions_min = torch.tensor(self.action_space.low, device=self.device, dtype=torch.float32)
-            self._clip_actions_max = torch.tensor(self.action_space.high, device=self.device, dtype=torch.float32)
+        # if self._clip_actions:
+        #     self._clip_actions_min = torch.tensor(self.action_space.low, device=self.device, dtype=torch.float32)
+        #     self._clip_actions_max = torch.tensor(self.action_space.high, device=self.device, dtype=torch.float32)
 
     def act(self,
             inputs: Mapping[str, Union[torch.Tensor, Any]],
@@ -344,8 +348,9 @@ class DeterministicMixin:
         actions, outputs = self.compute(inputs, role)
 
         # clip actions
-        if self._clip_actions:
-            actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
+        # TODO enable
+        # if self._clip_actions:
+        #     actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
 
         return actions, None, outputs
     
@@ -371,8 +376,8 @@ class DeterministicMixin:
             >>> print(actions.shape, outputs)
             torch.Size([4096, 1]) {}
         """
-        # clip actions
-        if self._clip_actions:
-            actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
+        # clip actions # TODO enable
+        # if self._clip_actions:
+        #     actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
 
         return actions, None, outputs
