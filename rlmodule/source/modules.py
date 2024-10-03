@@ -493,6 +493,7 @@ class RnnMlp(RnnBase):
 
     def __init__(self, cfg):
         super().__init__(cfg.rnn)
+        cfg.rnn.input_size = cfg.input_size
         self.rnn = cfg.rnn.module(cfg.rnn)
         cfg.mlp.input_size = self.hidden_size
         self.mlp = MLP(cfg.mlp)
@@ -504,15 +505,14 @@ class RnnMlp(RnnBase):
 
 def example_RnnMlp():
     cfg = RnnMlpCfg(
+        input_size = 517,
         rnn = RnnCfg(
-            input_size = 517,
             num_envs = 2048,
             num_layers = 1,
             hidden_size = 512 + 256,
             sequence_length = 128,
         ),
         mlp = MlpCfg(
-            input_size = -1, # inferred
             hidden_units = [2048, 1024, 1024, 512],
             activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
         ),
@@ -521,8 +521,8 @@ def example_RnnMlp():
 
 def example_GruMlp():
     cfg = RnnMlpCfg(
+        input_size = 517,
         rnn = GruCfg(
-            input_size = 517,
             num_envs = 2048,
             num_layers = 1,
             hidden_size = 512 + 256,
@@ -538,8 +538,8 @@ def example_GruMlp():
 
 def example_LstmMlp():
     cfg = RnnMlpCfg(
+        input_size = 517,
         rnn = LstmCfg(
-            input_size = 517,
             num_envs = 2048,
             num_layers = 1,
             hidden_size = 512 + 256,

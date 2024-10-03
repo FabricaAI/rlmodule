@@ -57,7 +57,7 @@ from typing import List
 @configclass
 class NetworkCfg:
     module: Union[nn.Module, Callable[..., nn.Module]] = MISSING
-    input_size: int = MISSING # change type
+    input_size: int = -1 # change type, -1 is inferred
     
 
 @configclass
@@ -194,14 +194,12 @@ def get_shared_model(env):
     net_cfg = RnnMlpCfg(
         input_size = env.observation_space.shape[0],
         rnn = LstmCfg(
-            input_size = env.observation_space.shape[0],
             num_envs = env.num_envs,
             num_layers = 1,
             hidden_size = 32,
             sequence_length = 16,
         ),
         mlp = MlpCfg(
-            input_size = -1, # inferred
             hidden_units = [64, 64, 64],
             activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
         ),
