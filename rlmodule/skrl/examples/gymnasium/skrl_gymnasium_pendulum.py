@@ -43,7 +43,7 @@ from typing import List
 #TODO next
 # (Done) check how to do own @configclass .. or use one from isaac by default (print something to know version)
 # (Done) RNN code modify to use data class
-# RnnMLP
+# (Done) RnnMLP
 # Custom function Network
 # Move things logically, annotate cfgs in modules
 # Handle input shapes better?
@@ -140,6 +140,7 @@ class SharedRLModelCfg(BaseRLCfg):
     policy_output_layer: type[OutputLayerCfg] = MISSING
     value_output_layer: type[OutputLayerCfg] = MISSING
     
+#TODO this, or inside RLModel class that have a config passed
 def build_model(cfg: BaseRLCfg):
 
     #1) network = create # for now it is created, todo from config
@@ -173,15 +174,32 @@ def build_model(cfg: BaseRLCfg):
 
 # END LIB CODE
 
+# def example_module(cfg):
+#     cfg = RnnMlpCfg(
+#         input_size = env.observation_space.shape[0],
+#         rnn = LstmCfg(
+#             num_envs = env.num_envs,
+#             num_layers = 1,
+#             hidden_size = 32,
+#             sequence_length = 16,
+#         ),
+#         mlp = MlpCfg(
+#             hidden_units = [64, 64, 64],
+#             activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+#         ),
+#     )
+#     return RnnMlp(cfg)
+
 def get_shared_model(env):
     # instantiate the agent's models (function approximators).
 
-    # net_cfg = MlpCfg(
-    #     input_size = env.observation_space.shape[0],
-    #     hidden_units = [64, 64, 64],
-    #     activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
-    # )
+    net_cfg = MlpCfg(
+        input_size = env.observation_space.shape[0],
+        hidden_units = [64, 64, 64],
+        activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+    )
 
+    # 2
     # net_cfg = LstmCfg(
     #     input_size = env.observation_space.shape[0],
     #     num_envs = env.num_envs,
@@ -190,20 +208,25 @@ def get_shared_model(env):
     #     sequence_length = 16,
     # )
 
-    # TODO input sizes 
-    net_cfg = RnnMlpCfg(
-        input_size = env.observation_space.shape[0],
-        rnn = LstmCfg(
-            num_envs = env.num_envs,
-            num_layers = 1,
-            hidden_size = 32,
-            sequence_length = 16,
-        ),
-        mlp = MlpCfg(
-            hidden_units = [64, 64, 64],
-            activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
-        ),
-    )
+    # 3
+    # # TODO input sizes 
+    # net_cfg = RnnMlpCfg(
+    #     input_size = env.observation_space.shape[0],
+    #     rnn = LstmCfg(
+    #         num_envs = env.num_envs,
+    #         num_layers = 1,
+    #         hidden_size = 32,
+    #         sequence_length = 16,
+    #     ),
+    #     mlp = MlpCfg(
+    #         hidden_units = [64, 64, 64],
+    #         activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+    #     ),
+    # )
+
+    # 4
+    # net_cfg = NetworkCfg( input_size = env.observation_space.shape[0],
+    #                       module = example_module)
 
     # variant IV - all config
     # net also config (optional)?
