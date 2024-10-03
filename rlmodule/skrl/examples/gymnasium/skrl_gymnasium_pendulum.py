@@ -28,53 +28,74 @@ from dataclasses import dataclass, MISSING
 from typing import Any, Mapping, Optional, Sequence, Tuple, Union
 from rlmodule.source.modules import get_output_size
 
+# use native configclass if available to avoid it being declared twice
+try:
+    from omni.isaac.lab.utils import configclass
+except ImportError:
+    print("Importing local configclass.")
+    from rlmodule.source.nvidia_utils import configclass
+
 # Net
 from dataclasses import dataclass, MISSING, field
 from collections.abc import Callable
 from typing import List
 
-@dataclass
+#TODO next
+# (Done) check how to do own @configclass .. or use one from isaac by default (print something to know version)
+# RNN code modify to use data class
+# RnnMLP
+# Custom function
+# Move things logically
+# Create examples
+# WRITE README tutorial
+# Launch new version
+
+# Import new version in Isaac-lab
+
+
+@configclass
 class NetworkCfg:
-    input_size: int = MISSING # change type
     module: Union[nn.Module, Callable[..., nn.Module]] = MISSING
-    
-# @dataclass 
-# class CustomNetworkCfg(NetworkCfg):
+    input_size: int = MISSING # change type
     
 
-@dataclass
+@configclass
 class MlpCfg(NetworkCfg):
-    hidden_units: List[int] = field(default_factory=lambda: [64, 64]) # I want configclass :(
-    activations: List[nn.Module] = field(default_factory=lambda: [nn.ReLU(), nn.ReLU()])
     module: type[MLP] = MLP
 
-@dataclass
-class RnnBaseCfg(NetworkCfg):
-    num_envs: int = 4
-    num_layers: int = 1
-    hidden_size: int = 32
-    sequence_length: int = 16
+    hidden_units: List[int] = MISSING
+    activations: List[nn.Module] = MISSING
+    
 
-@dataclass
+@configclass
+class RnnBaseCfg(NetworkCfg):
+    num_envs: int = MISSING
+    num_layers: int = MISSING
+    hidden_size: int = MISSING
+    sequence_length: int = MISSING
+
+@configclass
 class RnnCfg(RnnBaseCfg):
     module: type[RNN] = RNN
 
-@dataclass
+@configclass
 class GruCfg(RnnBaseCfg):
     module: type[GRU] = GRU
 
-@dataclass
+@configclass
 class LstmCfg(RnnBaseCfg):
     module: type[LSTM] = LSTM
 
-# @dataclass
-# class RnnMlpCfg(NetworkCfg):
-#     rnn: type[RnnBaseCfg] = MISSING
-#     mlp: type[MlpCfg] = MISSING
-#     module: type[RnnMlp] = RnnMlp
+@configclass
+class RnnMlpCfg(NetworkCfg):
+    module: type[RnnMlp] = RnnMlp
+
+    rnn: type[RnnBaseCfg] = MISSING
+    mlp: type[MlpCfg] = MISSING
+    
 
 
-@dataclass
+@configclass
 class OutputLayerCfg:
     class_type: type[nn.Module] = MISSING,
     output_size: int = MISSING,  # TODO not int but something more clever
@@ -82,7 +103,7 @@ class OutputLayerCfg:
 
     clip_actions: bool = False,  # TODO what is clip action doing
 
-@dataclass
+@configclass
 class GaussianLayerCfg(OutputLayerCfg):
     class_type: type[GaussianLayer] = GaussianLayer
     output_activation: nn.Module = nn.Tanh()
@@ -93,29 +114,31 @@ class GaussianLayerCfg(OutputLayerCfg):
     initial_log_std: float = 0
     reduction: str = "sum"
 
-@dataclass
+@configclass
 class DeterministicLayerCfg(OutputLayerCfg):
     class_type: type[DeterministicLayer] = DeterministicLayer
     output_size: int = 1
     output_activation: nn.Module = nn.Identity()
 
-@dataclass
+@configclass
 class BaseRLCfg:
+    class_type: type[RLModel] = MISSING
     network: nn.Module = MISSING
     device: Optional[Union[str, torch.device]] = MISSING
-    class_type: type[RLModel] = MISSING
+    
 
-@dataclass
+@configclass
 class RLModelCfg(BaseRLCfg):
-    output_layer: type[OutputLayerCfg] = GaussianLayerCfg()
     class_type: type[RLModel] = RLModel
+    output_layer: type[OutputLayerCfg] = GaussianLayerCfg()
+    
 
-@dataclass
+@configclass
 class SharedRLModelCfg(BaseRLCfg):
-    policy_output_layer: type[OutputLayerCfg] = GaussianLayerCfg() # TODO .. MISSING
-    value_output_layer: type[OutputLayerCfg] = DeterministicLayerCfg()
     class_type: type[SharedRLModel] = SharedRLModel
-
+    policy_output_layer: type[OutputLayerCfg] = MISSING
+    value_output_layer: type[OutputLayerCfg] = MISSING
+    
 def build_model(cfg: BaseRLCfg):
 
     #1) network = create # for now it is created, todo from config
