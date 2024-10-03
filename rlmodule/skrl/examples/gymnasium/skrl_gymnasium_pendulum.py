@@ -1,10 +1,12 @@
 import gymnasium as gym
 
-import torch
 import torch.nn as nn
 
-from rlmodule.source.rlmodel import SharedRLModel, RLModel, GaussianLayer, DeterministicLayer
-from rlmodule.source.modules import MLP, RNN, GRU, LSTM, RnnMlp, RnnBase
+from rlmodule.source.model_cfg import SharedRLModelCfg
+from rlmodule.source.modules_cfg import MlpCfg
+from rlmodule.source.output_layer_cfg import DeterministicLayerCfg, GaussianLayerCfg
+from rlmodule.source.model_builder import build_model
+
 
 # import the skrl components to build the RL system
 from skrl.agents.torch.ppo import PPO, PPO_RNN, PPO_DEFAULT_CONFIG
@@ -22,157 +24,22 @@ from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
 # seed for reproducibility
 set_seed()  # e.g. `set_seed(42)` for fixed seed
 
-# BEGIN LIB CODE
-# TODO: move it from example :)
-from dataclasses import dataclass, MISSING
-from typing import Any, Mapping, Optional, Sequence, Tuple, Union
-from rlmodule.source.modules import get_output_size
-
-# use native configclass if available to avoid it being declared twice
-try:
-    from omni.isaac.lab.utils import configclass
-except ImportError:
-    print("Importing local configclass.")
-    from rlmodule.source.nvidia_utils import configclass
-
-# Net
-from dataclasses import dataclass, MISSING, field
-from collections.abc import Callable
-from typing import List
-
 #TODO next
 # (Done) check how to do own @configclass .. or use one from isaac by default (print something to know version)
 # (Done) RNN code modify to use data class
 # (Done) RnnMLP
-# Custom function Network
+# (Done) Custom function Network
 # Move things logically, annotate cfgs in modules
 # Handle input shapes better?
+# Convert all rest modules to use Configclass
+# Rearrange library in the way it can be used for other rllibs and for torch/jax?
 # Create examples - mlp, rnn,gru,lstm, Lstmmlp, shared - separate , custom net by fcion
 # WRITE README tutorial
+# Run & fix pre-commit
 # Launch new version to pip
-
 # Import new version in Isaac-lab
 
-
-@configclass
-class NetworkCfg:
-    module: Union[nn.Module, Callable[..., nn.Module]] = MISSING
-    input_size: int = -1 # change type, -1 is inferred
-    
-
-@configclass
-class MlpCfg(NetworkCfg):
-    module: type[MLP] = MLP
-
-    hidden_units: List[int] = MISSING
-    activations: List[nn.Module] = MISSING
-    
-
-@configclass
-class RnnBaseCfg(NetworkCfg):
-    num_envs: int = MISSING
-    num_layers: int = MISSING
-    hidden_size: int = MISSING
-    sequence_length: int = MISSING
-
-@configclass
-class RnnCfg(RnnBaseCfg):
-    module: type[RNN] = RNN
-
-@configclass
-class GruCfg(RnnBaseCfg):
-    module: type[GRU] = GRU
-
-@configclass
-class LstmCfg(RnnBaseCfg):
-    module: type[LSTM] = LSTM
-
-@configclass
-class RnnMlpCfg(NetworkCfg):
-    module: type[RnnMlp] = RnnMlp
-
-    rnn: type[RnnBaseCfg] = MISSING
-    mlp: type[MlpCfg] = MISSING
-    
-# net end
-
-@configclass
-class OutputLayerCfg:
-    class_type: type[nn.Module] = MISSING,
-    output_size: int = MISSING,  # TODO not int but something more clever
-    output_activation: nn.Module = MISSING,
-
-    clip_actions: bool = False,  # TODO what is clip action doing
-
-@configclass
-class GaussianLayerCfg(OutputLayerCfg):
-    class_type: type[GaussianLayer] = GaussianLayer
-    output_activation: nn.Module = nn.Tanh()
-
-    clip_log_std: bool = True
-    min_log_std: float = -20
-    max_log_std: float = 2
-    initial_log_std: float = 0
-    reduction: str = "sum"
-
-@configclass
-class DeterministicLayerCfg(OutputLayerCfg):
-    class_type: type[DeterministicLayer] = DeterministicLayer
-    output_size: int = 1
-    output_activation: nn.Module = nn.Identity()
-
-@configclass
-class BaseRLCfg:
-    class_type: type[RLModel] = MISSING
-    network: nn.Module = MISSING
-    device: Optional[Union[str, torch.device]] = MISSING
-    
-
-@configclass
-class RLModelCfg(BaseRLCfg):
-    class_type: type[RLModel] = RLModel
-    output_layer: type[OutputLayerCfg] = GaussianLayerCfg()
-    
-
-@configclass
-class SharedRLModelCfg(BaseRLCfg):
-    class_type: type[SharedRLModel] = SharedRLModel
-    policy_output_layer: type[OutputLayerCfg] = MISSING
-    value_output_layer: type[OutputLayerCfg] = MISSING
-    
-#TODO this, or inside RLModel class that have a config passed
-def build_model(cfg: BaseRLCfg):
-
-    #1) network = create # for now it is created, todo from config
-    
-    #2) get output size - what type?  ..what is Model init doing with action/observation space
-
-    net = cfg.network.module(cfg.network)
-    
-    network_output_size = get_output_size(net, cfg.network.input_size)
-
-    def build_output_layer(layer_cfg):
-        return layer_cfg.class_type( device = cfg.device, input_size = network_output_size, cfg = layer_cfg)
-    
-    if isinstance(cfg, RLModelCfg):
-        rl_model = cfg.class_type( device = cfg.device,
-                        network = net,
-                        output_layer = build_output_layer( cfg.output_layer)
-                     )
-    elif isinstance(cfg, SharedRLModelCfg):
-        rl_model = cfg.class_type( device = cfg.device,
-                        network = net,
-                        policy_output_layer = build_output_layer( cfg.policy_output_layer ),
-                        value_output_layer = build_output_layer( cfg.value_output_layer ),
-                     )
-    else:
-        raise TypeError(
-                f" Received unsupported class: '{type(cfg)}'."
-            )
-    return rl_model
-
-
-# END LIB CODE
+ 
 
 # def example_module(cfg):
 #     cfg = RnnMlpCfg(
@@ -275,40 +142,41 @@ def get_shared_model(env):
 
     return {'policy': model, 'value': model}
 
-def get_separate_model(env):
-    # instantiate the agent's models (function approximators).
-    params = {'input_size': env.observation_space.shape[0], 
-              'hidden_units': [64, 64, 64], 
-              'activations': ['relu', 'relu', 'relu']
-              }
-    net = MLP(params)
+# TODO Update separate model to configclass
+# def get_separate_model(env):
+#     # instantiate the agent's models (function approximators).
+#     params = {'input_size': env.observation_space.shape[0], 
+#               'hidden_units': [64, 64, 64], 
+#               'activations': ['relu', 'relu', 'relu']
+#               }
+#     net = MLP(params)
 
-    policy_model = RLModel(
-        network=net,
-        device= device,
-        output_layer = GaussianLayer(
-                input_size=64,  # TODO
-                output_size=env.action_space.shape[0],
-                output_activation=nn.Tanh(),
-                clip_actions=False,
-                clip_log_std=True,
-                min_log_std=-1.2,
-                max_log_std=2,
-                initial_log_std=0.2,
-            ),
-    )
+#     policy_model = RLModel(
+#         network=net,
+#         device= device,
+#         output_layer = GaussianLayer(
+#                 input_size=64,  # TODO
+#                 output_size=env.action_space.shape[0],
+#                 output_activation=nn.Tanh(),
+#                 clip_actions=False,
+#                 clip_log_std=True,
+#                 min_log_std=-1.2,
+#                 max_log_std=2,
+#                 initial_log_std=0.2,
+#             ),
+#     )
 
-    value_model = RLModel(
-        network=net,
-        device= device,
-        output_layer = DeterministicLayer(
-                input_size=64,
-                output_size=1,
-                output_activation=nn.Identity(),
-            ),
-    )
+#     value_model = RLModel(
+#         network=net,
+#         device= device,
+#         output_layer = DeterministicLayer(
+#                 input_size=64,
+#                 output_size=1,
+#                 output_activation=nn.Identity(),
+#             ),
+#     )
 
-    return {'policy': policy_model, 'value': value_model}
+#     return {'policy': policy_model, 'value': value_model}
 
 
 # load and wrap the gymnasium environment.
