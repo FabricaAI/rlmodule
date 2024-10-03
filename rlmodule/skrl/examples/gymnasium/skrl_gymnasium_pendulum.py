@@ -45,10 +45,11 @@ from typing import List
 # (Done) RNN code modify to use data class
 # RnnMLP
 # Custom function Network
-# Move things logically
+# Move things logically, annotate cfgs in modules
+# Handle input shapes better?
 # Create examples - mlp, rnn,gru,lstm, Lstmmlp, shared - separate , custom net by fcion
 # WRITE README tutorial
-# Launch new version
+# Launch new version to pip
 
 # Import new version in Isaac-lab
 
@@ -93,7 +94,7 @@ class RnnMlpCfg(NetworkCfg):
     rnn: type[RnnBaseCfg] = MISSING
     mlp: type[MlpCfg] = MISSING
     
-
+# net end
 
 @configclass
 class OutputLayerCfg:
@@ -174,11 +175,6 @@ def build_model(cfg: BaseRLCfg):
 
 def get_shared_model(env):
     # instantiate the agent's models (function approximators).
-    # params = {'input_size': env.observation_space.shape[0], 
-    #           'hidden_units': [64, 64, 64], 
-    #           'activations': [nn.ReLU(), nn.ReLU(), nn.ReLU()]
-    #           }
-    # net = MLP(params)
 
     # net_cfg = MlpCfg(
     #     input_size = env.observation_space.shape[0],
@@ -186,12 +182,29 @@ def get_shared_model(env):
     #     activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
     # )
 
-    net_cfg = LstmCfg(
+    # net_cfg = LstmCfg(
+    #     input_size = env.observation_space.shape[0],
+    #     num_envs = env.num_envs,
+    #     num_layers = 1,
+    #     hidden_size = 32,
+    #     sequence_length = 16,
+    # )
+
+    # TODO input sizes 
+    net_cfg = RnnMlpCfg(
         input_size = env.observation_space.shape[0],
-        num_envs = env.num_envs,
-        num_layers = 1,
-        hidden_size = 32,
-        sequence_length = 16,
+        rnn = LstmCfg(
+            input_size = env.observation_space.shape[0],
+            num_envs = env.num_envs,
+            num_layers = 1,
+            hidden_size = 32,
+            sequence_length = 16,
+        ),
+        mlp = MlpCfg(
+            input_size = -1, # inferred
+            hidden_units = [64, 64, 64],
+            activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+        ),
     )
 
     # variant IV - all config

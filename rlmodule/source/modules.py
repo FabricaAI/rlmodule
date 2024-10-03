@@ -462,8 +462,8 @@ def example_RNN():
         input_size = 517,
         num_envs = 2048,
         num_layers = 1,
-        hidden_size = 32,
-        sequence_length = 16,
+        hidden_size = 512 + 256,
+        sequence_length = 128,
     )
     return RNN(cfg)
 
@@ -473,8 +473,8 @@ def example_GRU():
         input_size = 517,
         num_envs = 2048,
         num_layers = 1,
-        hidden_size = 32,
-        sequence_length = 16,
+        hidden_size = 512 + 256,
+        sequence_length = 128,
     )
     return GRU(cfg)
 
@@ -484,73 +484,74 @@ def example_LSTM():
         input_size = 517,
         num_envs = 2048,
         num_layers = 1,
-        hidden_size = 32,
-        sequence_length = 16,
+        hidden_size = 512 + 256,
+        sequence_length = 128,
     )
     return LSTM(cfg)
 
 class RnnMlp(RnnBase):
 
-    def __init__(self, rnn_class, rnn_params, mlp_params):
-        super().__init__(rnn_params)
-
-        self.rnn = rnn_class(rnn_params)
-
-        mlp_params['input_size'] = self.hidden_size
-
-        self.mlp = MLP(mlp_params)
+    def __init__(self, cfg):
+        super().__init__(cfg.rnn)
+        self.rnn = cfg.rnn.module(cfg.rnn)
+        cfg.mlp.input_size = self.hidden_size
+        self.mlp = MLP(cfg.mlp)
 
     def forward(self, states, terminated, rnn_inputs):
         rnn_output, output_dict = self.rnn(states, terminated, rnn_inputs)
         return self.mlp(rnn_output), output_dict
 
 
-def example_LstmMlp():
-    rnn_params = {
-        'num_envs': 2048,
-        'input_size': 517,
-        'num_layers': 1,
-        'hidden_size': 512 + 256,
-        'sequence_length': 128,
-    }
-    mlp_params = {
-        'hidden_units': [2048, 1024, 1024, 512],
-        'activations': ['elu', 'elu', 'elu', 'elu'],
-    }
-
-    return RnnMlp(LSTM, rnn_params, mlp_params)
-
+def example_RnnMlp():
+    cfg = RnnMlpCfg(
+        rnn = RnnCfg(
+            input_size = 517,
+            num_envs = 2048,
+            num_layers = 1,
+            hidden_size = 512 + 256,
+            sequence_length = 128,
+        ),
+        mlp = MlpCfg(
+            input_size = -1, # inferred
+            hidden_units = [2048, 1024, 1024, 512],
+            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+        ),
+    )
+    return RnnMlp(cfg)
 
 def example_GruMlp():
-    rnn_params = {
-        'num_envs': 2048,
-        'input_size': 517,
-        'num_layers': 1,
-        'hidden_size': 512 + 256,
-        'sequence_length': 128,
-    }
-    mlp_params = {
-        'hidden_units': [2048, 1024, 1024, 512],
-        'activations': ['elu', 'elu', 'elu', 'elu'],
-    }
+    cfg = RnnMlpCfg(
+        rnn = GruCfg(
+            input_size = 517,
+            num_envs = 2048,
+            num_layers = 1,
+            hidden_size = 512 + 256,
+            sequence_length = 128,
+        ),
+        mlp = MlpCfg(
+            input_size = -1, # inferred
+            hidden_units = [2048, 1024, 1024, 512],
+            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+        ),
+    )
+    return RnnMlp(cfg)
 
-    return RnnMlp(GRU, rnn_params, mlp_params)
-
-
-def example_RnnMlp():
-    rnn_params = {
-        'num_envs': 2048,
-        'input_size': 517,
-        'num_layers': 1,
-        'hidden_size': 512 + 256,
-        'sequence_length': 128,
-    }
-    mlp_params = {
-        'hidden_units': [2048, 1024, 1024, 512],
-        'activations': ['elu', 'elu', 'elu', 'elu'],
-    }
-
-    return RnnMlp(RNN, rnn_params, mlp_params)
+def example_LstmMlp():
+    cfg = RnnMlpCfg(
+        rnn = LstmCfg(
+            input_size = 517,
+            num_envs = 2048,
+            num_layers = 1,
+            hidden_size = 512 + 256,
+            sequence_length = 128,
+        ),
+        mlp = MlpCfg(
+            input_size = -1, # inferred
+            hidden_units = [2048, 1024, 1024, 512],
+            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+        ),
+    )
+    return RnnMlp(cfg)
 
 
 class RnnMlpWithForwardedInput(RnnBase):
