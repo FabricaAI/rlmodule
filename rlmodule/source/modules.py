@@ -275,29 +275,27 @@ def triple_cnn_and_mlp_example():
 
     return TripleCnnAndMlp(cnn_params, mlp_params)
 
-
+# TODO annotation types to config
 class RnnBase(nn.Module):
-    def __init__(self, params):
+    def __init__(self, cfg):
         super().__init__()
-
-        # parameters necessery for RNN, GRU and LSTM networks
-        self.num_envs = params['num_envs']
-        self.num_layers = params['num_layers']
-        self.hidden_size = params['hidden_size']
-        self.sequence_length = params['sequence_length']
-        if 'input_size' in params:
-            self.input_size = params['input_size']
+        
+        # parameters necessary for RNN, GRU and LSTM networks
+        self.num_envs = cfg.num_envs
+        self.num_layers = cfg.num_layers
+        self.hidden_size = cfg.hidden_size
+        self.sequence_length = cfg.sequence_length
 
 
 class LSTM(RnnBase):
 
-    def __init__(self, params):
-        super().__init__(params)
+    def __init__(self, cfg):
+        super().__init__(cfg)
 
         self.lstm = nn.LSTM(
-            input_size=self.input_size,
-            hidden_size=self.hidden_size,
-            num_layers=self.num_layers,
+            input_size=cfg.input_size,
+            hidden_size=cfg.hidden_size,
+            num_layers=cfg.num_layers,
             batch_first=True,
         )
 
@@ -372,8 +370,8 @@ class LSTM(RnnBase):
 
 class RnnModule(RnnBase):
 
-    def __init__(self, params):
-        super().__init__(params)
+    def __init__(self, cfg):
+        super().__init__(cfg)
 
     def forward(self, states, terminated, rnn_inputs):
 
@@ -436,61 +434,60 @@ class RnnModule(RnnBase):
 
 
 class RNN(RnnModule):
-    def __init__(self, params):
-        super().__init__(params)
+    def __init__(self, cfg):
+        super().__init__(cfg)
 
         self.rnn = nn.RNN(
-            input_size=self.input_size,
-            hidden_size=self.hidden_size,
-            num_layers=self.num_layers,
+            input_size=cfg.input_size,
+            hidden_size=cfg.hidden_size,
+            num_layers=cfg.num_layers,
             batch_first=True,
         )
 
 
 class GRU(RnnModule):
-    def __init__(self, params):
-        super().__init__(params)
+    def __init__(self, cfg):
+        super().__init__(cfg)
 
         self.rnn = nn.GRU(
-            input_size=self.input_size,
-            hidden_size=self.hidden_size,
-            num_layers=self.num_layers,
+            input_size=cfg.input_size,
+            hidden_size=cfg.hidden_size,
+            num_layers=cfg.num_layers,
             batch_first=True,
         )
 
 
 def example_RNN():
-    params = {
-        'num_envs': 2048,
-        'input_size': 517,
-        'num_layers': 1,
-        'hidden_size': 512 + 256,
-        'sequence_length': 128,
-    }
-    return RNN(params)
+    cfg = RnnCfg(
+        input_size = 517,
+        num_envs = 2048,
+        num_layers = 1,
+        hidden_size = 32,
+        sequence_length = 16,
+    )
+    return RNN(cfg)
 
 
 def example_GRU():
-    params = {
-        'num_envs': 2048,
-        'input_size': 517,
-        'num_layers': 1,
-        'hidden_size': 512 + 256,
-        'sequence_length': 128,
-    }
-    return GRU(params)
+    cfg = GruCfg(
+        input_size = 517,
+        num_envs = 2048,
+        num_layers = 1,
+        hidden_size = 32,
+        sequence_length = 16,
+    )
+    return GRU(cfg)
 
 
 def example_LSTM():
-    params = {
-        'num_envs': 2048,
-        'input_size': 517,
-        'num_layers': 1,
-        'hidden_size': 512 + 256,
-        'sequence_length': 32,
-    }
-    return LSTM(params)
-
+    cfg = LstmCfg(
+        input_size = 517,
+        num_envs = 2048,
+        num_layers = 1,
+        hidden_size = 32,
+        sequence_length = 16,
+    )
+    return LSTM(cfg)
 
 class RnnMlp(RnnBase):
 

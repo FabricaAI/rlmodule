@@ -7,7 +7,7 @@ from rlmodule.source.rlmodel import SharedRLModel, RLModel, GaussianLayer, Deter
 from rlmodule.source.modules import MLP, RNN, GRU, LSTM, RnnMlp, RnnBase
 
 # import the skrl components to build the RL system
-from skrl.agents.torch.ppo import PPO, PPO_DEFAULT_CONFIG
+from skrl.agents.torch.ppo import PPO, PPO_RNN, PPO_DEFAULT_CONFIG
 
 from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
 #from skrl.envs.wrappers.torch import wrap_env
@@ -42,11 +42,11 @@ from typing import List
 
 #TODO next
 # (Done) check how to do own @configclass .. or use one from isaac by default (print something to know version)
-# RNN code modify to use data class
+# (Done) RNN code modify to use data class
 # RnnMLP
-# Custom function
+# Custom function Network
 # Move things logically
-# Create examples
+# Create examples - mlp, rnn,gru,lstm, Lstmmlp, shared - separate , custom net by fcion
 # WRITE README tutorial
 # Launch new version
 
@@ -180,19 +180,19 @@ def get_shared_model(env):
     #           }
     # net = MLP(params)
 
-    net_cfg = MlpCfg(
-        input_size = env.observation_space.shape[0],
-        hidden_units = [64, 64, 64],
-        activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
-    )
-
-    # rnn_cfg = RnnCfg(
+    # net_cfg = MlpCfg(
     #     input_size = env.observation_space.shape[0],
-    #     num_envs = env.num_envs,
-    #     num_layers = 1,
-    #     hidden_size = 32,
-    #     sequence_length = 16,
+    #     hidden_units = [64, 64, 64],
+    #     activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
     # )
+
+    net_cfg = LstmCfg(
+        input_size = env.observation_space.shape[0],
+        num_envs = env.num_envs,
+        num_layers = 1,
+        hidden_size = 32,
+        sequence_length = 16,
+    )
 
     # variant IV - all config
     # net also config (optional)?
@@ -326,13 +326,21 @@ cfg["experiment"]["write_interval"] = 500
 cfg["experiment"]["checkpoint_interval"] = 5000
 cfg["experiment"]["directory"] = "runs/torch/Pendulum"
 
-agent = PPO(models=models,
-            memory=memory,
-            cfg=cfg,
-            observation_space=env.observation_space,
-            action_space=env.action_space,
-            device=device)
-
+# TODO(nicer)
+if models['policy']._rnn:
+    agent = PPO_RNN(models=models,
+                memory=memory,
+                cfg=cfg,
+                observation_space=env.observation_space,
+                action_space=env.action_space,
+                device=device)
+else:
+    agent = PPO(models=models,
+                memory=memory,
+                cfg=cfg,
+                observation_space=env.observation_space,
+                action_space=env.action_space,
+                device=device)
 
 # configure and instantiate the RL trainer
 cfg_trainer = {"timesteps": 100000, "headless": True}
