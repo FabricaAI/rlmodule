@@ -6,7 +6,7 @@ from dataclasses import MISSING
 from collections.abc import Callable
 from typing import List, Sequence, Union
 
-from rlmodule.source.modules import GRU, LSTM, MLP, RNN, RnnMlp
+from rlmodule.source.modules import GRU, LSTM, MLP, RNN, RnnBase, RnnMlp
 
 # use isaac-lab native configclass if available to avoid it being declared twice
 try:
@@ -50,7 +50,7 @@ class LstmCfg(RnnBaseCfg):
 
 @configclass
 class RnnMlpCfg(NetworkCfg):
-    module: type[RnnMlp] = RnnMlp
+    module: type[RnnBase] = RnnMlp
 
     rnn: RnnBaseCfg = MISSING
     mlp: MlpCfg = MISSING

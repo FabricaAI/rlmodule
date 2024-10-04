@@ -3,54 +3,6 @@ import torch.nn as nn
 
 from rlmodule.source.utils import get_space_size
 
-# # todo consider get rid of this and just pass torch.nn stuff
-# def _get_activation_function(activation: str) -> nn.Module:
-#     """Get the activation function
-
-#     Supported activation functions:
-
-#     - "elu"
-#     - "leaky_relu"
-#     - "relu"
-#     - "selu"
-#     - "sigmoid"
-#     - "softmax"
-#     - "softplus"
-#     - "softsign"
-#     - "tanh"
-
-#     :param activation: activation function name.
-#                        If activation is an empty string, a placeholder will be returned (``torch.nn.Identity()``)
-#     :type activation: str
-
-#     :raises: ValueError if activation is not a valid activation function
-
-#     :return: activation function
-#     :rtype: nn.Module
-#     """
-#     if not activation:
-#         return torch.nn.Identity()
-#     elif activation == "relu":
-#         return torch.nn.ReLU()
-#     elif activation == "tanh":
-#         return torch.nn.Tanh()
-#     elif activation == "sigmoid":
-#         return torch.nn.Sigmoid()
-#     elif activation == "leaky_relu":
-#         return torch.nn.LeakyReLU()
-#     elif activation == "elu":
-#         return torch.nn.ELU()
-#     elif activation == "softplus":
-#         return torch.nn.Softplus()
-#     elif activation == "softsign":
-#         return torch.nn.Softsign()
-#     elif activation == "selu":
-#         return torch.nn.SELU()
-#     elif activation == "softmax":
-#         return torch.nn.Softmax()
-#     else:
-#         raise ValueError(f"Unknown activation function: {activation}")
-
 
 class MLP(nn.Module):
     def __init__(self, cfg):
@@ -76,12 +28,11 @@ class MLP(nn.Module):
 
 
 def example_MLP():
-    cfg = MlpCfg(
+    return MlpCfg(
         input_size = 517,
         hidden_units = [2048, 1024, 1024, 512],
         activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
     )
-    return MLP(cfg)
 
 
 def get_cnn_layer(params):
@@ -441,41 +392,39 @@ class GRU(RnnModule):
 
 
 def example_RNN():
-    cfg = RnnCfg(
+    return RnnCfg(
         input_size = 517,
         num_envs = 2048,
         num_layers = 1,
         hidden_size = 512 + 256,
         sequence_length = 128,
     )
-    return RNN(cfg)
 
 
 def example_GRU():
-    cfg = GruCfg(
+    return GruCfg(
         input_size = 517,
         num_envs = 2048,
         num_layers = 1,
         hidden_size = 512 + 256,
         sequence_length = 128,
     )
-    return GRU(cfg)
 
 
 def example_LSTM():
-    cfg = LstmCfg(
+    return LstmCfg(
         input_size = 517,
         num_envs = 2048,
         num_layers = 1,
         hidden_size = 512 + 256,
         sequence_length = 128,
     )
-    return LSTM(cfg)
 
 class RnnMlp(RnnBase):
 
     def __init__(self, cfg):
         super().__init__(cfg.rnn)
+        cfg.input_size = get_space_size(cfg.input_size)
         cfg.rnn.input_size = cfg.input_size
         self.rnn = cfg.rnn.module(cfg.rnn)
         cfg.mlp.input_size = self.hidden_size
@@ -487,7 +436,7 @@ class RnnMlp(RnnBase):
 
 
 def example_RnnMlp():
-    cfg = RnnMlpCfg(
+    return RnnMlpCfg(
         input_size = 517,
         rnn = RnnCfg(
             num_envs = 2048,
@@ -500,7 +449,6 @@ def example_RnnMlp():
             activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
         ),
     )
-    return RnnMlp(cfg)
 
 def example_GruMlp():
     cfg = RnnMlpCfg(
@@ -539,14 +487,13 @@ def example_LstmMlp():
 
 class RnnMlpWithForwardedInput(RnnBase):
 
-    def __init__(self, rnn_class, rnn_params, mlp_params):
-        super().__init__(rnn_params)
-
-        self.rnn = rnn_class(rnn_params)
-
-        mlp_params['input_size'] = self.input_size + self.hidden_size
-
-        self.mlp = MLP(mlp_params)
+    def __init__(self, cfg):
+        super().__init__(cfg.rnn)
+        cfg.input_size = get_space_size(cfg.input_size)
+        cfg.rnn.input_size = cfg.input_size
+        self.rnn = cfg.rnn.module(cfg.rnn)
+        cfg.mlp.input_size = cfg.input_size + self.hidden_size
+        self.mlp = MLP(cfg.mlp)
 
     def forward(self, states, terminated, rnn_inputs):
         rnn_output, output_dict = self.rnn(states, terminated, rnn_inputs)
@@ -555,52 +502,55 @@ class RnnMlpWithForwardedInput(RnnBase):
         return self.mlp(mlp_input), output_dict
 
 
-def example_LstmMlpWithForwardedInput():
-    rnn_params = {
-        'num_envs': 2048,
-        'input_size': 517,
-        'num_layers': 1,
-        'hidden_size': 512 + 256,
-        'sequence_length': 128,
-    }
-    mlp_params = {
-        'hidden_units': [2048, 1024, 1024, 512],
-        'activations': ['elu', 'elu', 'elu', 'elu'],
-    }
-
-    return RnnMlpWithForwardedInput(LSTM, rnn_params, mlp_params)
+def example_RnnMlpWithForwardedInput():
+    return RnnMlpCfg(
+        module = RnnMlpWithForwardedInput,
+        input_size = 517,
+        rnn = RnnCfg(
+            num_envs = 2048,
+            num_layers = 1,
+            hidden_size = 512 + 256,
+            sequence_length = 128,
+        ),
+        mlp = MlpCfg(
+            hidden_units = [2048, 1024, 1024, 512],
+            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+        ),
+    )
 
 
 def example_GruMlpWithForwardedInput():
-    rnn_params = {
-        'num_envs': 2048,
-        'input_size': 517,
-        'num_layers': 1,
-        'hidden_size': 512 + 256,
-        'sequence_length': 128,
-    }
-    mlp_params = {
-        'hidden_units': [2048, 1024, 1024, 512],
-        'activations': ['elu', 'elu', 'elu', 'elu'],
-    }
+    return RnnMlpCfg(
+        module = RnnMlpWithForwardedInput,
+        input_size = 517,
+        rnn = GruCfg(
+            num_envs = 2048,
+            num_layers = 1,
+            hidden_size = 512 + 256,
+            sequence_length = 128,
+        ),
+        mlp = MlpCfg(
+            hidden_units = [2048, 1024, 1024, 512],
+            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+        ),
+    )
 
-    return RnnMlpWithForwardedInput(GRU, rnn_params, mlp_params)
 
-
-def example_RnnMlpWithForwardedInput():
-    rnn_params = {
-        'num_envs': 2048,
-        'input_size': 517,
-        'num_layers': 1,
-        'hidden_size': 512 + 256,
-        'sequence_length': 128,
-    }
-    mlp_params = {
-        'hidden_units': [2048, 1024, 1024, 512],
-        'activations': ['elu', 'elu', 'elu', 'elu'],
-    }
-
-    return RnnMlpWithForwardedInput(RNN, rnn_params, mlp_params)
+def example_LstmMlpWithForwardedInput():
+    return RnnMlpCfg(
+        module = RnnMlpWithForwardedInput,
+        input_size = 517,
+        rnn = LstmCfg(
+            num_envs = 2048,
+            num_layers = 1,
+            hidden_size = 512 + 256,
+            sequence_length = 128,
+        ),
+        mlp = MlpCfg(
+            hidden_units = [2048, 1024, 1024, 512],
+            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+        ),
+    )
 
 
 class CrazyNet(RnnBase):
@@ -678,307 +628,3 @@ def crazy_net_example():
     mlp_params = {'hidden_units': [1024, 1024, 512], 'activations': ['elu', 'elu', 'elu']}
 
     return CrazyNet(LSTM, rnn_params, cnn_params, mlp_params)
-
-
-# def lstm_module(model_params, observation_space, action_space, device, double_pass):
-
-#     class LSTM(nn.Module):
-
-#         def __init__(self):
-#             super().__init__()
-
-#             # lstm
-#             self.num_envs = 2048
-#             self.num_layers = 1
-#             self.hidden_size = 256 + 512
-#             self.sequence_length = 128
-
-#             self.lstm = nn.LSTM(
-#                 input_size=observation_space.shape[0],
-#                 hidden_size=self.hidden_size,
-#                 num_layers=self.num_layers,
-#                 batch_first=True,
-#             )
-
-#             # mlp
-#             input_size = self.hidden_size
-
-#             mlp_params = model_params['mlp']
-#             self.net = DEPRECATEDMLP(input_size, mlp_params['units'], device, mlp_params['activation'])
-
-#         # TODO(ll) can inherit from LSTM ..without mlp
-#         def forward(self, inputs):
-
-#             # Process rnn inputs
-#             hidden_states, cell_states = rnn_inputs[0], rnn_inputs[1]
-
-#             # Dimensions Explained
-#             # ---------------------
-#             # 'N'       - Batch size
-#             # 'L'       - Sequence length
-#             # 'Hin'     - Input size (number of features per input at each time step)
-#             # 'Hout'    - Hidden size (number of features in the hidden state of the LSTM)
-#             # 'HCell'   - Cell state size (same as hidden size in LSTM context)
-#             # 'D'       - Number of directions (1 for unidirectional, 2 for bidirectional)
-#             # 'num_layers' - Number of stacked LSTM layers
-
-#             # training
-#             if self.training:
-#                 # reshape (N * L, Hin) -> (N, L, Hin)
-#                 rnn_input = states.view(-1, self.sequence_length, states.shape[-1])
-
-#                 # reshape (D * num_layers, N * L, Hout) -> (D * num_layers, N, L, Hout)
-#                 hidden_states = hidden_states.view(self.num_layers, -1, self.sequence_length, hidden_states.shape[-1])
-
-#                 # reshape (D * num_layers, N * L, Hcell) -> (D * num_layers, N, L, Hcell)
-#                 cell_states = cell_states.view(self.num_layers, -1, self.sequence_length, cell_states.shape[-1])
-
-#                 # get the hidden/cell states corresponding to the first time step of the sequence for each batch.
-#                 hidden_states = hidden_states[:, :, 0, :].contiguous()  # (D * num_layers, N, Hout)
-#                 cell_states = cell_states[:, :, 0, :].contiguous()  # (D * num_layers, N, Hcell)
-
-#                 # reset the RNN state in the middle of a sequence
-#                 if terminated is not None and torch.any(terminated):
-#                     rnn_outputs = []
-#                     terminated = terminated.view(-1, self.sequence_length)
-#                     indexes = (
-#                         [0]
-#                         + (terminated[:, :-1].any(dim=0).nonzero(as_tuple=True)[0] + 1).tolist()
-#                         + [self.sequence_length]
-#                     )
-
-#                     for i in range(len(indexes) - 1):
-#                         i0, i1 = indexes[i], indexes[i + 1]
-#                         # Compute the RNN output for the segment of the sequence
-#                         rnn_output, (hidden_states, cell_states) = self.lstm(
-#                             rnn_input[:, i0:i1, :], (hidden_states, cell_states)
-#                         )
-#                         # Reset hidden and cell states where sequences are terminated
-#                         hidden_states[:, (terminated[:, i1 - 1]), :] = 0
-#                         cell_states[:, (terminated[:, i1 - 1]), :] = 0
-#                         rnn_outputs.append(rnn_output)
-
-#                     rnn_states = (hidden_states, cell_states)
-#                     rnn_output = torch.cat(rnn_outputs, dim=1)
-#                 # if no termination reset is needed, simply compute the RNN output
-#                 else:
-#                     rnn_output, rnn_states = self.lstm(rnn_input, (hidden_states, cell_states))
-#             # rollout
-#             else:
-#                 # reshape (N, Hin) -> (N, 1, Hin)
-#                 # This is done to add a sequence length dimension of 1 for processing one time step at a time
-#                 rnn_input = states.view(-1, 1, states.shape[-1])
-#                 rnn_output, rnn_states = self.lstm(rnn_input, (hidden_states, cell_states))
-
-#             # reshape (N, L, D * Hout) -> (N * L, D * Hout)
-#             rnn_output = torch.flatten(rnn_output, start_dim=0, end_dim=1)
-
-#             return self.net(rnn_output), {'rnn': [rnn_states[0], rnn_states[1]]}
-
-#     # TODO(ll) if not giving in params then just fast return.
-#     lstm = LSTM()
-#     return lstm
-
-
-def get_models_shared(model_params, observation_space, action_space, device, double_pass):
-    # input_size = observation_space.shape[0]
-
-    # MLP -- change mlp in grouting PPO
-    # mlp_params = model_params['mlp']
-    # net = MLP(input_size, mlp_params['units'], device, mlp_params['activation'])
-
-    # LSTM -- change lstm in grouting PPO
-    # net = lstm_module(model_params, observation_space, action_space, device, double_pass)
-
-    # net = example_MLP()
-    # net = crazy_net_example()
-    # net = triple_cnn_and_mlp_example()
-    net = example_LstmMlp()
-    # net = example_LstmMlpWithForwardedInput()
-
-    # TODO --infere this inside of Layer?
-    net_output_size = get_output_size(net, observation_space.shape[0])
-
-    model = SharedRLModel(
-        observation_space=observation_space,
-        action_space=action_space,
-        input_shape=Shape.STATES,
-        device=device,
-        network=net,
-        output_layer={
-            'policy': GaussianLayer(
-                input_size=net_output_size,
-                output_size=action_space.shape[0],
-                device=device,
-                output_shape=Shape.ACTIONS,
-                output_activation=nn.Tanh(),
-                clip_actions=False,
-                clip_log_std=True,
-                min_log_std=-1.2,
-                max_log_std=2,
-                initial_log_std=0.2,
-            ),
-            'value': DeterministicLayer(
-                input_size=net_output_size,
-                output_size=1,
-                device=device,
-                output_shape=Shape.ONE,
-                output_activation=nn.Identity(),
-            ),
-        },
-    ).to(device)
-
-    return {'policy': model, 'value': model}
-
-
-def get_models_separate(model_params, observation_space, action_space, device, double_pass):
-
-    net = example_MLP()
-    value_net = example_MLP()
-
-    # change for lstm/mlp
-    # net = lstm_module(model_params, observation_space, action_space, device, double_pass)
-    # value_net = lstm_module(model_params, observation_space, action_space, device, double_pass)
-
-    policy_model = RLModel(
-        observation_space=observation_space,
-        action_space=action_space,
-        input_shape=Shape.STATES,
-        device=device,
-        network=net,
-        output_layer=GaussianLayer(
-            input_size=get_output_size(net, observation_space.shape[0]),
-            output_size=action_space.shape[0],
-            device=device,
-            output_shape=Shape.ACTIONS,
-            output_activation=nn.Tanh(),
-            clip_actions=False,
-            clip_log_std=True,
-            min_log_std=-20,
-            max_log_std=2,
-            initial_log_std=0,
-        ),
-    ).to(device)
-
-    value_model = RLModel(
-        observation_space=observation_space,
-        action_space=action_space,
-        input_shape=Shape.STATES,
-        device=device,
-        network=value_net,
-        output_layer=DeterministicLayer(
-            input_size=get_output_size(value_net, observation_space.shape[0]),
-            output_size=1,
-            device=device,
-            output_shape=Shape.ONE,
-            output_activation=nn.Identity(),
-        ),
-    ).to(device)
-
-    return {'policy': policy_model, 'value': value_model}
-
-
-# def get_models_separate_in(model_params, observation_space, action_space, device, double_pass):
-
-#     if 'mlp' in model_params:
-
-#         # if 'lstm' in model_params:
-#         #     input_size = model_params['lstm']['hidden_size']
-#         # else:
-#         input_size = observation_space.shape[0]  # TODO: is this approach too simplistic
-
-#         if 'cnn' in model_params:
-#             net = MixedCNN(model_params, input_size, device)
-#         else:
-#             mlp_params = model_params['mlp']
-#             net = MLP(input_size, mlp_params['units'], device, mlp_params['activation'])
-#             value_net = MLP(input_size, mlp_params['units'], device, mlp_params['activation'])
-#     else:
-#         raise ValueError('Invalid model type')
-
-#     # change for lstm/mlp
-#     # net = lstm_module(model_params, observation_space, action_space, device, double_pass)
-#     # value_net = lstm_module(model_params, observation_space, action_space, device, double_pass)
-
-#     policy_model = GaussianModel(
-#         observation_space=observation_space,
-#         action_space=action_space,
-#         network=net,
-#         device=device,
-#         clip_actions=False,
-#         clip_log_std=True,
-#         min_log_std=-20,
-#         max_log_std=2,
-#         initial_log_std=0,
-#     )
-
-#     value_model = DeterministicModel(
-#         observation_space=observation_space,
-#         action_space=action_space,
-#         network=value_net,
-#         device=device,
-#         clip_actions=False,
-#     )
-
-#     return {'policy': policy_model, 'value': value_model}
-
-
-# def get_models(model_params, observation_space, action_space, device, double_pass):
-
-#     if 'mlp' in model_params:
-
-#         if 'lstm' in model_params:
-#             input_size = model_params['lstm']['hidden_size']
-#         else:
-#             input_size = observation_space.shape[0]  # TODO: is this approach too simplistic
-
-#         if 'cnn' in model_params:
-#             net = MixedCNN(model_params, input_size, device)
-#         else:
-#             mlp_params = model_params['mlp']
-#             net = MLP(input_size, mlp_params['units'], device, mlp_params['activation'])
-#     else:
-#         raise ValueError('Invalid model type')
-
-#     shared_config = {
-#         'clip_actions': False,
-#         'clip_log_std': True,
-#         'min_log_std': -20,
-#         'max_log_std': 2,
-#         'initial_log_std': 0,
-#         'input_shape': Shape.STATES,
-#         'output_scale': 1,
-#         'hiddens': model_params['mlp']['units'],
-#         'hidden_activation': [model_params['mlp']['activation'] for _ in range(len(model_params['mlp']['units']))],
-#         'output_activation': None,
-#     }
-
-#     policy_config = shared_config.copy()
-#     value_config = shared_config.copy()
-
-#     policy_config['output_activation'] = 'tanh'
-#     policy_config['output_shape'] = Shape.ACTIONS
-#     value_config['output_shape'] = Shape.ONE
-
-#     if 'lstm' in model_params:
-#         model = shared_model_lstm(
-#             observation_space=observation_space,
-#             action_space=action_space,
-#             device=device,
-#             roles=['policy', 'value'],
-#             parameters=[policy_config, value_config],
-#             net=net,
-#             double_pass=double_pass,
-#         )
-#     else:
-#         model = shared_model(
-#             observation_space=observation_space,
-#             action_space=action_space,
-#             device=device,
-#             roles=['policy', 'value'],
-#             parameters=[policy_config, value_config],
-#             net=net,
-#             double_pass=double_pass,
-#         )
-
-#     return {'policy': model, 'value': model}

@@ -3,7 +3,8 @@ import gymnasium as gym
 import torch.nn as nn
 
 from rlmodule.source.model_cfg import SharedRLModelCfg
-from rlmodule.source.modules_cfg import MlpCfg
+from rlmodule.source.modules import RnnMlpWithForwardedInput
+from rlmodule.source.modules_cfg import LstmCfg, MlpCfg, RnnMlpCfg
 from rlmodule.source.output_layer_cfg import DeterministicLayerCfg, GaussianLayerCfg
 from rlmodule.source.model_builder import build_model
 
@@ -30,10 +31,11 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 # (Done) RnnMLP
 # (Done) Custom function Network
 # (Done) Move things logically
-# Handle input shapes better?
+# (Done) Handle input shapes better?
 # Convert all rest modules to use Configclass
 # Rearrange library in the way it can be used for other rllibs and for torch/jax?
 # Create examples - mlp, rnn,gru,lstm, Lstmmlp, shared - separate , custom net by fcion
+#                 - examples from modules make in class header not function 
 # WRITE README tutorial
 # Run & fix pre-commit
 # annotate cfgs in modules - why doesn't work
@@ -45,7 +47,7 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 
 # def example_module(cfg):
 #     cfg = RnnMlpCfg(
-#         input_size = env.observation_space.shape[0],
+#         input_size = env.observation_space,
 #         rnn = LstmCfg(
 #             num_envs = env.num_envs,
 #             num_layers = 1,
@@ -62,15 +64,15 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 def get_shared_model(env):
     # instantiate the agent's models (function approximators).
 
-    net_cfg = MlpCfg(
-        input_size = env.observation_space,
-        hidden_units = [64, 64, 64],
-        activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
-    )
+    # net_cfg = MlpCfg(
+    #     input_size = env.observation_space,
+    #     hidden_units = [64, 64, 64],
+    #     activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+    # )
 
     # 2
     # net_cfg = LstmCfg(
-    #     input_size = env.observation_space.shape[0],
+    #     input_size = env.observation_space,
     #     num_envs = env.num_envs,
     #     num_layers = 1,
     #     hidden_size = 32,
@@ -78,9 +80,24 @@ def get_shared_model(env):
     # )
 
     # 3
-    # # TODO input sizes 
     # net_cfg = RnnMlpCfg(
-    #     input_size = env.observation_space.shape[0],
+    #     input_size = env.observation_space,
+    #     rnn = LstmCfg(
+    #         num_envs = env.num_envs,
+    #         num_layers = 1,
+    #         hidden_size = 32,
+    #         sequence_length = 16,
+    #     ),
+    #     mlp = MlpCfg(
+    #         hidden_units = [64, 64, 64],
+    #         activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+    #     ),
+    # )
+
+    # 3.5 
+    # net_cfg = RnnMlpCfg(
+    #     input_size = env.observation_space,
+    #     module = RnnMlpWithForwardedInput,
     #     rnn = LstmCfg(
     #         num_envs = env.num_envs,
     #         num_layers = 1,
@@ -94,7 +111,7 @@ def get_shared_model(env):
     # )
 
     # 4
-    # net_cfg = NetworkCfg( input_size = env.observation_space.shape[0],
+    # net_cfg = NetworkCfg( input_size = env.observation_space,
     #                       module = example_module)
 
     # variant IV - all config
@@ -147,7 +164,7 @@ def get_shared_model(env):
 # TODO Update separate model to configclass
 # def get_separate_model(env):
 #     # instantiate the agent's models (function approximators).
-#     params = {'input_size': env.observation_space.shape[0], 
+#     params = {'input_size': env.observation_space, 
 #               'hidden_units': [64, 64, 64], 
 #               'activations': ['relu', 'relu', 'relu']
 #               }
@@ -158,7 +175,7 @@ def get_shared_model(env):
 #         device= device,
 #         output_layer = GaussianLayer(
 #                 input_size=64,  # TODO
-#                 output_size=env.action_space.shape[0],
+#                 output_size=env.action_space,
 #                 output_activation=nn.Tanh(),
 #                 clip_actions=False,
 #                 clip_log_std=True,
