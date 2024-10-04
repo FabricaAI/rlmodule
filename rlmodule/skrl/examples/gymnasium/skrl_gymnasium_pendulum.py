@@ -8,6 +8,11 @@ from rlmodule.source.modules_cfg import LstmCfg, MlpCfg, RnnMlpCfg
 from rlmodule.source.output_layer_cfg import DeterministicLayerCfg, GaussianLayerCfg
 from rlmodule.source.model_builder import build_model
 
+# example how this could be called:
+# from rlmodule.skrl.torch.model import SharedRLModelCfg
+# from rlmodule.skrl.torch.module import LstmCfg
+# from rlmodule.skrl.torch.output_layer import DeterministicLayerCfg, GaussianLayerCfg
+# from rlmodule.skrl.torch import build_model
 
 # import the skrl components to build the RL system
 from skrl.agents.torch.ppo import PPO, PPO_RNN, PPO_DEFAULT_CONFIG
@@ -32,7 +37,7 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 # (Done) Custom function Network
 # (Done) Move things logically
 # (Done) Handle input shapes better?
-# Convert all rest modules to use Configclass
+# (Done except Cnn) Convert all rest modules to use Configclass
 # Rearrange library in the way it can be used for other rllibs and for torch/jax?
 # Create examples - mlp, rnn,gru,lstm, Lstmmlp, shared - separate , custom net by fcion
 #                 - examples from modules make in class header not function 
