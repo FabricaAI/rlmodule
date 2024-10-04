@@ -1,4 +1,8 @@
 from dataclasses import MISSING
+from typing import Sequence, Union
+
+import gym
+import gymnasium
 from rlmodule.source.output_layer import GaussianLayer, DeterministicLayer
 import torch.nn as nn
 
@@ -11,7 +15,7 @@ except ImportError:
 @configclass
 class OutputLayerCfg:
     class_type: type[nn.Module] = MISSING,
-    output_size: int = MISSING,  # TODO not int but something more clever
+    output_size: Union[int, Sequence[int], gym.Space, gymnasium.Space] = MISSING,  
     output_activation: nn.Module = MISSING,
 
     clip_actions: bool = False,  # TODO what is clip action doing
@@ -30,5 +34,5 @@ class GaussianLayerCfg(OutputLayerCfg):
 @configclass
 class DeterministicLayerCfg(OutputLayerCfg):
     class_type: type[DeterministicLayer] = DeterministicLayer
-    output_size: int = 1
+    output_size: Union[int, Sequence[int], gym.Space, gymnasium.Space] = 1
     output_activation: nn.Module = nn.Identity()

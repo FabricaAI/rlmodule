@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from rlmodule.source.utils import get_space_size
+
 # # todo consider get rid of this and just pass torch.nn stuff
 # def _get_activation_function(activation: str) -> nn.Module:
 #     """Get the activation function
@@ -50,32 +52,11 @@ import torch.nn as nn
 #         raise ValueError(f"Unknown activation function: {activation}")
 
 
-
-# TODO(ll) double function, already defined in model_instantiators.py
-def contains_rnn_module(module: nn.Module, module_types):
-    for submodule in module.modules():
-        if isinstance(submodule, module_types):
-            return True
-    return False
-
-
-# TODO check for input sizes, also check if you can't just pass inputs. instead of separate thingies separated in RLModel
-def get_output_size(module, input_shape):
-    module.train(False)
-    if isinstance(input_shape, int):
-        input_shape = (input_shape,)
-    dummy_input = torch.zeros(1, *input_shape)
-    if contains_rnn_module(module, (nn.LSTM, nn.RNN, nn.GRU)):
-        # TODO(ll) module.num_layer * bidirectional?
-        dummy_hidden = torch.zeros(module.num_layers, 1, module.hidden_size)
-        return module(dummy_input, None, (dummy_hidden, dummy_hidden))[0].view(-1).shape[0]
-    else:
-        return module(dummy_input).view(-1).shape[0]
-
-
 class MLP(nn.Module):
     def __init__(self, cfg):
         super().__init__()
+
+        cfg.input_size = get_space_size(cfg.input_size)
 
         # input layer
         layers = [
@@ -285,6 +266,8 @@ class RnnBase(nn.Module):
         self.num_layers = cfg.num_layers
         self.hidden_size = cfg.hidden_size
         self.sequence_length = cfg.sequence_length
+
+        cfg.input_size = get_space_size(cfg.input_size)
 
 
 class LSTM(RnnBase):

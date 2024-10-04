@@ -29,5 +29,5 @@ class RLModelCfg(BaseRLCfg):
 @configclass
 class SharedRLModelCfg(BaseRLCfg):
     class_type: type[SharedRLModel] = SharedRLModel
-    policy_output_layer: type[OutputLayerCfg] = MISSING
-    value_output_layer: type[OutputLayerCfg] = MISSING
+    policy_output_layer: OutputLayerCfg = MISSING
+    value_output_layer: OutputLayerCfg = MISSING

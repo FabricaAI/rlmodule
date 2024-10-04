@@ -1,5 +1,5 @@
-from rlmodule.source.modules import get_output_size
 from rlmodule.source.model_cfg import BaseRLCfg, RLModelCfg, SharedRLModelCfg
+from rlmodule.source.utils import get_output_size
 
 #TODO this, or inside RLModel class that have a config passed
 def build_model(cfg: BaseRLCfg):

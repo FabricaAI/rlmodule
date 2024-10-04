@@ -1,6 +1,8 @@
 
 import torch
 import torch.nn as nn
+
+from rlmodule.source.utils import get_space_size
 from .deprecated import DeterministicMixin, GaussianMixin  # noqa
 
 from typing import TYPE_CHECKING
@@ -13,12 +15,12 @@ if TYPE_CHECKING:
 
 # TODO ABC?
 class OutputLayer(nn.Module):
-    # TODO how to pass device, needs?
+    # TODO does it need device?
     def __init__(self, device, input_size, cfg):
         super().__init__()
         self.device = device
-        self._input_size = input_size
-        self._cfg = cfg
+        
+        cfg.output_size = get_space_size(cfg.output_size)
 
 
 class GaussianLayer(OutputLayer):

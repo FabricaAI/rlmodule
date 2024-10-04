@@ -29,13 +29,15 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 # (Done) RNN code modify to use data class
 # (Done) RnnMLP
 # (Done) Custom function Network
-# Move things logically, annotate cfgs in modules
+# (Done) Move things logically
 # Handle input shapes better?
 # Convert all rest modules to use Configclass
 # Rearrange library in the way it can be used for other rllibs and for torch/jax?
 # Create examples - mlp, rnn,gru,lstm, Lstmmlp, shared - separate , custom net by fcion
 # WRITE README tutorial
 # Run & fix pre-commit
+# annotate cfgs in modules - why doesn't work
+# extensive comments
 # Launch new version to pip
 # Import new version in Isaac-lab
 
@@ -61,7 +63,7 @@ def get_shared_model(env):
     # instantiate the agent's models (function approximators).
 
     net_cfg = MlpCfg(
-        input_size = env.observation_space.shape[0],
+        input_size = env.observation_space,
         hidden_units = [64, 64, 64],
         activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
     )
@@ -102,7 +104,7 @@ def get_shared_model(env):
             network= net_cfg,
             device= device,
             policy_output_layer= GaussianLayerCfg(
-                    output_size=env.action_space.shape[0],
+                    output_size=env.action_space,
                     min_log_std=-1.2,
                     max_log_std=2,
                     initial_log_std=0.2,
