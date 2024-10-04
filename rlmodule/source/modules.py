@@ -5,6 +5,19 @@ from rlmodule.source.utils import get_space_size
 
 
 class MLP(nn.Module):
+    """Configurable multilayer perceptron module.
+    
+    Architecture is defined by providing modules_cfg.MlpCfg
+
+    Example of use:
+
+        cfg = MlpCfg(
+            input_size = 517,
+            hidden_units = [2048, 1024, 1024, 512],
+            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+        )
+        net = MLP(cfg)
+    """
     def __init__(self, cfg):
         super().__init__()
 
@@ -27,188 +40,13 @@ class MLP(nn.Module):
         return self.mlp(input)
 
 
-def example_MLP():
-    return MlpCfg(
-        input_size = 517,
-        hidden_units = [2048, 1024, 1024, 512],
-        activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
-    )
-
-
-def get_cnn_layer(params):
-    """
-    Create a CNN layer based on the provided parameters and activation function.
-
-    Args:
-        params (dict): Dictionary containing the parameters for the layer.
-            Expected keys are:
-                - 'type' (str): Type of the layer ('conv' for convolutional, 'pool' for pooling,
-                                                   'dense' for fully connected).
-                - 'in_channels' (int): Number of input channels (required for 'conv' type).
-                - 'out_channels' (int): Number of output channels (required for 'conv' type).
-                - 'kernel_size' (int or tuple): Size of the kernel (required for 'conv' or 'pool' type).
-                - 'stride' (int or tuple): Stride of the convolution or pooling operation
-                                           (required for 'conv' or 'pool' type).
-                - 'in_features' (int): Number of input features (required for 'dense' type).
-                - 'out_features' (int): Number of output features (required for 'dense' type).
-                - 'activation' (str): Activation function to use after the layer (only for 'conv' and 'dense' types).
-
-    Returns:
-        list: List containing the created layer(s). For 'conv' type, it includes the convolutional
-              layer followed by the activation function. For 'pool' type, it includes only the pooling layer.
-              For 'dense' type, it includes the fully connected layer followed by the activation function.
-
-    Raises:
-        ValueError: If the 'type' specified in params is not supported.
-    """
-    if params['type'] == 'conv':
-        return [
-            nn.Conv2d(
-                in_channels=params['in_channels'],
-                out_channels=params['out_channels'],
-                kernel_size=params['kernel_size'],
-                stride=params['stride'],
-            ),
-            _get_activation_function(params['activation']),
-        ]
-    elif params['type'] == 'pool':
-        return [
-            nn.MaxPool2d(
-                kernel_size=params['kernel_size'],
-                stride=params['stride'],
-            )
-        ]
-    elif params['type'] == 'dense':
-        return [
-            nn.Flatten(),  # if there is 2D layer before need to be flatten to 1D.
-            nn.Linear(
-                in_features=params['in_features'],
-                out_features=params['out_features'],
-            ),
-            _get_activation_function(params['activation']),
-        ]
-    else:
-        raise ValueError(f"Unsupported layer type: {params['type']}")
-
-
-class CNN(nn.Module):
-    def __init__(self, params):
-        super().__init__()
-
-        layers = sum([get_cnn_layer(layer_params) for layer_params in params['layers']], [])
-        self.cnn = nn.Sequential(*layers, nn.Flatten())
-
-    def forward(self, input):
-        return self.cnn(input)
-
-
-def example_CNN():
-    params = {
-        'input_shape': [1, 13, 13],
-        'layers': [
-            {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1, 'out_channels': 32, 'activation': 'relu'},
-            {
-                'type': 'conv',
-                'kernel_size': 3,
-                'stride': 1,
-                'in_channels': 32,
-                'out_channels': 64,
-                'activation': 'relu',
-            },
-        ],
-    }
-
-    return CNN(params)
-
-
-class TripleCnnAndMlp(nn.Module):
-    """
-    Split the observation space into parts and pass some parts through different CNNs.
-
-    ----------------------------------------------------------------------
-    |                       Network architecture  (cnn shape 1x13x13)    |
-    |--------------------------------------------------------------------|
-    |                                                                    |
-    |       10  1x13x13  1x13x13  1x13x13                                |
-    |       |    |         |         |                                   |
-    |       |   CNN0      CNN1      CNN2                                 |
-    |       |    |         |         |                                   |
-    |       | Flatten   Flatten   Flatten                                |
-    |       |    |         |         |                                   |
-    |       |____|_________|_________|                                   |
-    |       |                                                            |
-    |       Join to shape 10 + OutUnits0 + OutUnits1 + OutUnits2         |
-    |       |                                                            |
-    |       MLP: UNITS[0]                                                |
-    |       |                                                            |
-    |       ...                                                          |
-    |       |                                                            |
-    |       MLP: UNITS[-1]                                               |
-    |       |                                                            |
-    |       Output                                                       |
-    |                                                                    |
-    ----------------------------------------------------------------------
-
-    """
-
-    def __init__(self, cnn_params, mlp_params):
-        super().__init__()
-        self.input_shape = cnn_params['input_shape']
-
-        self.prefix_length = 10
-        self.cnn_number = 3
-
-        self.cnns = nn.ModuleList([CNN(cnn_params) for _ in range(self.cnn_number)])
-
-        mlp_params['input_size'] = self.prefix_length + self.cnn_number * get_output_size(
-            self.cnns[0], self.input_shape
-        )
-
-        self.mlp = MLP(mlp_params)
-
-    def forward(self, input):
-        # Split the input
-        prefix = input[:, : self.prefix_length]
-
-        c, h, w = self.input_shape
-        cnn_input = input[:, self.prefix_length :].view(-1, self.cnn_number * c, h, w)
-
-        # Forward pass through CNNs
-        cnn_outputs = []
-        for i in range(self.cnn_number):
-            cnn_output = self.cnns[i](cnn_input[:, i : i + 1, :, :]).view(input.size(0), -1)
-            cnn_outputs.append(cnn_output)
-
-        # Concatenate the outputs
-        combined = torch.cat([prefix] + cnn_outputs, dim=1)
-
-        # Forward pass through MLP
-        output = self.mlp(combined)
-        return output
-
-
-def triple_cnn_and_mlp_example():
-    cnn_params = {
-        'input_shape': [1, 13, 13],
-        'layers': [
-            {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1, 'out_channels': 32, 'activation': 'relu'},
-            {
-                'type': 'conv',
-                'kernel_size': 3,
-                'stride': 1,
-                'in_channels': 32,
-                'out_channels': 64,
-                'activation': 'relu',
-            },
-        ],
-    }
-
-    mlp_params = {'hidden_units': [1024, 1024, 512], 'activations': ['elu', 'elu', 'elu']}
-
-    return TripleCnnAndMlp(cnn_params, mlp_params)
-
 # TODO annotation types to config
 class RnnBase(nn.Module):
+    """Base class for all modules containing RNN (including GRU, LSTM) substructure.
+
+    All modules that have RNN substructure should inherit from this module.
+    It makes sure all the necessary variables used by RL algorithm are defined.
+    """
     def __init__(self, cfg):
         super().__init__()
         
@@ -222,7 +60,24 @@ class RnnBase(nn.Module):
 
 
 class LSTM(RnnBase):
+    """Configurable LSTM module.
+    
+    Architecture is defined by providing modules_cfg.LstmCfg.
+    
+    Contains implementation of forward pass handling hidden and cell states 
+    necessary for run with PPO_RNN algorithm.
 
+    Example of use:
+
+        cfg = LstmCfg(
+            input_size = 517,
+            num_envs = 2048,
+            num_layers = 1,
+            hidden_size = 512 + 256,
+            sequence_length = 128,
+        )
+        net = LSTM(cfg)
+    """
     def __init__(self, cfg):
         super().__init__(cfg)
 
@@ -303,7 +158,11 @@ class LSTM(RnnBase):
 
 
 class RnnModule(RnnBase):
-
+    """Common base class for RNN and GRU module.
+    
+    Contains implementation of forward pass handling hidden states 
+    necessary for run with PPO_RNN algorithm.
+    """
     def __init__(self, cfg):
         super().__init__(cfg)
 
@@ -368,6 +227,24 @@ class RnnModule(RnnBase):
 
 
 class RNN(RnnModule):
+    """Configurable RNN module.
+    
+    Architecture is defined by providing modules_cfg.RnnCfg.
+    
+    Contains implementation of forward pass handling hidden states 
+    necessary for run with PPO_RNN algorithm.
+
+    Example of use:
+
+        cfg = RnnCfg(
+            input_size = 517,
+            num_envs = 2048,
+            num_layers = 1,
+            hidden_size = 512 + 256,
+            sequence_length = 128,
+        )
+        net = Rnn(cfg)
+    """
     def __init__(self, cfg):
         super().__init__(cfg)
 
@@ -380,6 +257,24 @@ class RNN(RnnModule):
 
 
 class GRU(RnnModule):
+    """Configurable GRU module.
+    
+    Architecture is defined by providing modules_cfg.GruCfg.
+    
+    Contains implementation of forward pass handling hidden states 
+    necessary for run with PPO_RNN algorithm.
+
+    Example of use:
+
+        cfg = GruCfg(
+            input_size = 517,
+            num_envs = 2048,
+            num_layers = 1,
+            hidden_size = 512 + 256,
+            sequence_length = 128,
+        )
+        net = Gru(cfg)
+    """
     def __init__(self, cfg):
         super().__init__(cfg)
 
@@ -391,37 +286,66 @@ class GRU(RnnModule):
         )
 
 
-def example_RNN():
-    return RnnCfg(
-        input_size = 517,
-        num_envs = 2048,
-        num_layers = 1,
-        hidden_size = 512 + 256,
-        sequence_length = 128,
-    )
-
-
-def example_GRU():
-    return GruCfg(
-        input_size = 517,
-        num_envs = 2048,
-        num_layers = 1,
-        hidden_size = 512 + 256,
-        sequence_length = 128,
-    )
-
-
-def example_LSTM():
-    return LstmCfg(
-        input_size = 517,
-        num_envs = 2048,
-        num_layers = 1,
-        hidden_size = 512 + 256,
-        sequence_length = 128,
-    )
-
 class RnnMlp(RnnBase):
+    """Configurable module for Rnn-based module followed by MLP.
+    
+    Architecture is defined by providing modules_cfg.RnnMlpCfg,
+    based on which the RNN, GRU or LSTM module will be used.
+    
+    Inherits implementation of forward pass handling hidden states 
+    necessary for run with PPO_RNN algorithm.
 
+    1) Example of use (with RNN module):
+
+        cfg = RnnMlpCfg(
+                input_size = 517,
+                rnn = RnnCfg(
+                    num_envs = 2048,
+                    num_layers = 1,
+                    hidden_size = 512 + 256,
+                    sequence_length = 128,
+                ),
+                mlp = MlpCfg(
+                    hidden_units = [2048, 1024, 1024, 512],
+                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                )
+            )
+        net = RnnMlp(cfg)
+
+    2) Example of use (with GRU module):
+
+        cfg = RnnMlpCfg(
+                input_size = 517,
+                rnn = GruCfg(
+                    num_envs = 2048,
+                    num_layers = 1,
+                    hidden_size = 512 + 256,
+                    sequence_length = 128,
+                ),
+                mlp = MlpCfg(
+                    hidden_units = [2048, 1024, 1024, 512],
+                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                )
+            )
+        net = RnnMlp(cfg)
+
+    3) Example of use (with LSTM module):
+
+        cfg = RnnMlpCfg(
+                input_size = 517,
+                rnn = LstmCfg(
+                    num_envs = 2048,
+                    num_layers = 1,
+                    hidden_size = 512 + 256,
+                    sequence_length = 128,
+                ),
+                mlp = MlpCfg(
+                    hidden_units = [2048, 1024, 1024, 512],
+                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                )
+            )
+        net = RnnMlp(cfg)
+    """
     def __init__(self, cfg):
         super().__init__(cfg.rnn)
         cfg.input_size = get_space_size(cfg.input_size)
@@ -435,58 +359,74 @@ class RnnMlp(RnnBase):
         return self.mlp(rnn_output), output_dict
 
 
-def example_RnnMlp():
-    return RnnMlpCfg(
-        input_size = 517,
-        rnn = RnnCfg(
-            num_envs = 2048,
-            num_layers = 1,
-            hidden_size = 512 + 256,
-            sequence_length = 128,
-        ),
-        mlp = MlpCfg(
-            hidden_units = [2048, 1024, 1024, 512],
-            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
-        ),
-    )
-
-def example_GruMlp():
-    cfg = RnnMlpCfg(
-        input_size = 517,
-        rnn = GruCfg(
-            num_envs = 2048,
-            num_layers = 1,
-            hidden_size = 512 + 256,
-            sequence_length = 128,
-        ),
-        mlp = MlpCfg(
-            input_size = -1, # inferred
-            hidden_units = [2048, 1024, 1024, 512],
-            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
-        ),
-    )
-    return RnnMlp(cfg)
-
-def example_LstmMlp():
-    cfg = RnnMlpCfg(
-        input_size = 517,
-        rnn = LstmCfg(
-            num_envs = 2048,
-            num_layers = 1,
-            hidden_size = 512 + 256,
-            sequence_length = 128,
-        ),
-        mlp = MlpCfg(
-            input_size = -1, # inferred
-            hidden_units = [2048, 1024, 1024, 512],
-            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
-        ),
-    )
-    return RnnMlp(cfg)
-
-
 class RnnMlpWithForwardedInput(RnnBase):
+    """Configurable module for Rnn-based module followed by MLP with
+    fast-forward input into MLP.
+    
+    Architecture is defined by providing modules_cfg.RnnMlpCfg,
+    based on which the RNN, GRU or LSTM module will be used.
+    
+    Inherits implementation of forward pass handling hidden states 
+    necessary for run with PPO_RNN algorithm.
 
+    1) Example of use (with RNN module):
+
+        cfg = RnnMlpCfg(
+                input_size = 517,
+                module = RnnMlpWithForwardedInput,
+                rnn = RnnCfg(
+                    num_envs = 2048,
+                    num_layers = 1,
+                    hidden_size = 512 + 256,
+                    sequence_length = 128,
+                ),
+                mlp = MlpCfg(
+                    hidden_units = [2048, 1024, 1024, 512],
+                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                )
+            )
+        net = RnnMlp(cfg)
+
+    2) Example of use (with GRU module):
+
+        cfg = RnnMlpCfg(
+                input_size = 517,
+                module = RnnMlpWithForwardedInput,
+                rnn = GruCfg(
+                    num_envs = 2048,
+                    num_layers = 1,
+                    hidden_size = 512 + 256,
+                    sequence_length = 128,
+                ),
+                mlp = MlpCfg(
+                    hidden_units = [2048, 1024, 1024, 512],
+                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                )
+            )
+        net = RnnMlp(cfg)
+
+    3) Example of use (with LSTM module):
+
+        cfg = RnnMlpCfg(
+                input_size = 517,
+                module = RnnMlpWithForwardedInput,
+                rnn = LstmCfg(
+                    num_envs = 2048,
+                    num_layers = 1,
+                    hidden_size = 512 + 256,
+                    sequence_length = 128,
+                ),
+                mlp = MlpCfg(
+                    hidden_units = [2048, 1024, 1024, 512],
+                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                )
+            )
+        net = RnnMlp(cfg)
+
+    Note: `module = RnnMlpWithForwardedInput` is not necessary for standalone example
+        to work. However it is included here because it is necessary for use in rlmodule.build_model to
+        differentiate it from RnnMlp class.
+    """
     def __init__(self, cfg):
         super().__init__(cfg.rnn)
         cfg.input_size = get_space_size(cfg.input_size)
@@ -502,129 +442,255 @@ class RnnMlpWithForwardedInput(RnnBase):
         return self.mlp(mlp_input), output_dict
 
 
-def example_RnnMlpWithForwardedInput():
-    return RnnMlpCfg(
-        module = RnnMlpWithForwardedInput,
-        input_size = 517,
-        rnn = RnnCfg(
-            num_envs = 2048,
-            num_layers = 1,
-            hidden_size = 512 + 256,
-            sequence_length = 128,
-        ),
-        mlp = MlpCfg(
-            hidden_units = [2048, 1024, 1024, 512],
-            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
-        ),
-    )
+
+# CNN - coming soon 
+
+# def get_cnn_layer(params):
+#     """
+#     Create a CNN layer based on the provided parameters and activation function.
+
+#     Args:
+#         params (dict): Dictionary containing the parameters for the layer.
+#             Expected keys are:
+#                 - 'type' (str): Type of the layer ('conv' for convolutional, 'pool' for pooling,
+#                                                    'dense' for fully connected).
+#                 - 'in_channels' (int): Number of input channels (required for 'conv' type).
+#                 - 'out_channels' (int): Number of output channels (required for 'conv' type).
+#                 - 'kernel_size' (int or tuple): Size of the kernel (required for 'conv' or 'pool' type).
+#                 - 'stride' (int or tuple): Stride of the convolution or pooling operation
+#                                            (required for 'conv' or 'pool' type).
+#                 - 'in_features' (int): Number of input features (required for 'dense' type).
+#                 - 'out_features' (int): Number of output features (required for 'dense' type).
+#                 - 'activation' (str): Activation function to use after the layer (only for 'conv' and 'dense' types).
+
+#     Returns:
+#         list: List containing the created layer(s). For 'conv' type, it includes the convolutional
+#               layer followed by the activation function. For 'pool' type, it includes only the pooling layer.
+#               For 'dense' type, it includes the fully connected layer followed by the activation function.
+
+#     Raises:
+#         ValueError: If the 'type' specified in params is not supported.
+#     """
+#     if params['type'] == 'conv':
+#         return [
+#             nn.Conv2d(
+#                 in_channels=params['in_channels'],
+#                 out_channels=params['out_channels'],
+#                 kernel_size=params['kernel_size'],
+#                 stride=params['stride'],
+#             ),
+#             _get_activation_function(params['activation']),
+#         ]
+#     elif params['type'] == 'pool':
+#         return [
+#             nn.MaxPool2d(
+#                 kernel_size=params['kernel_size'],
+#                 stride=params['stride'],
+#             )
+#         ]
+#     elif params['type'] == 'dense':
+#         return [
+#             nn.Flatten(),  # if there is 2D layer before need to be flatten to 1D.
+#             nn.Linear(
+#                 in_features=params['in_features'],
+#                 out_features=params['out_features'],
+#             ),
+#             _get_activation_function(params['activation']),
+#         ]
+#     else:
+#         raise ValueError(f"Unsupported layer type: {params['type']}")
 
 
-def example_GruMlpWithForwardedInput():
-    return RnnMlpCfg(
-        module = RnnMlpWithForwardedInput,
-        input_size = 517,
-        rnn = GruCfg(
-            num_envs = 2048,
-            num_layers = 1,
-            hidden_size = 512 + 256,
-            sequence_length = 128,
-        ),
-        mlp = MlpCfg(
-            hidden_units = [2048, 1024, 1024, 512],
-            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
-        ),
-    )
+# class CNN(nn.Module):
+#     def __init__(self, params):
+#         super().__init__()
+
+#         layers = sum([get_cnn_layer(layer_params) for layer_params in params['layers']], [])
+#         self.cnn = nn.Sequential(*layers, nn.Flatten())
+
+#     def forward(self, input):
+#         return self.cnn(input)
 
 
-def example_LstmMlpWithForwardedInput():
-    return RnnMlpCfg(
-        module = RnnMlpWithForwardedInput,
-        input_size = 517,
-        rnn = LstmCfg(
-            num_envs = 2048,
-            num_layers = 1,
-            hidden_size = 512 + 256,
-            sequence_length = 128,
-        ),
-        mlp = MlpCfg(
-            hidden_units = [2048, 1024, 1024, 512],
-            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
-        ),
-    )
+# def example_CNN():
+#     params = {
+#         'input_shape': [1, 13, 13],
+#         'layers': [
+#             {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1, 'out_channels': 32, 'activation': 'relu'},
+#             {
+#                 'type': 'conv',
+#                 'kernel_size': 3,
+#                 'stride': 1,
+#                 'in_channels': 32,
+#                 'out_channels': 64,
+#                 'activation': 'relu',
+#             },
+#         ],
+#     }
+
+#     return CNN(params)
 
 
-class CrazyNet(RnnBase):
-    def __init__(self, rnn_class, rnn_params, cnn_params, mlp_params):
-        super().__init__(rnn_params)
+# class TripleCnnAndMlp(nn.Module):
+#     """
+#     Split the observation space into parts and pass some parts through different CNNs.
 
-        self.input_shape = cnn_params['input_shape']
+#     ----------------------------------------------------------------------
+#     |                       Network architecture  (cnn shape 1x13x13)    |
+#     |--------------------------------------------------------------------|
+#     |                                                                    |
+#     |       10  1x13x13  1x13x13  1x13x13                                |
+#     |       |    |         |         |                                   |
+#     |       |   CNN0      CNN1      CNN2                                 |
+#     |       |    |         |         |                                   |
+#     |       | Flatten   Flatten   Flatten                                |
+#     |       |    |         |         |                                   |
+#     |       |____|_________|_________|                                   |
+#     |       |                                                            |
+#     |       Join to shape 10 + OutUnits0 + OutUnits1 + OutUnits2         |
+#     |       |                                                            |
+#     |       MLP: UNITS[0]                                                |
+#     |       |                                                            |
+#     |       ...                                                          |
+#     |       |                                                            |
+#     |       MLP: UNITS[-1]                                               |
+#     |       |                                                            |
+#     |       Output                                                       |
+#     |                                                                    |
+#     ----------------------------------------------------------------------
 
-        self.prefix_length = 10
-        self.cnn_number = 3
+#     """
 
-        self.cnns = nn.ModuleList([CNN(cnn_params) for _ in range(self.cnn_number)])
+#     def __init__(self, cnn_params, mlp_params):
+#         super().__init__()
+#         self.input_shape = cnn_params['input_shape']
 
-        rnn_params['input_size'] = self.prefix_length + self.cnn_number * get_output_size(
-            self.cnns[0], self.input_shape
-        )
+#         self.prefix_length = 10
+#         self.cnn_number = 3
 
-        self.rnn = rnn_class(rnn_params)
+#         self.cnns = nn.ModuleList([CNN(cnn_params) for _ in range(self.cnn_number)])
 
-        mlp_params['input_size'] = self.rnn.hidden_size + self.rnn.input_size
+#         mlp_params['input_size'] = self.prefix_length + self.cnn_number * get_output_size(
+#             self.cnns[0], self.input_shape
+#         )
 
-        self.mlp = MLP(mlp_params)
+#         self.mlp = MLP(mlp_params)
 
-    def forward(self, states, terminated, rnn_inputs):
-        # Split the input
-        prefix = states[:, : self.prefix_length]
+#     def forward(self, input):
+#         # Split the input
+#         prefix = input[:, : self.prefix_length]
 
-        c, h, w = self.input_shape
-        cnn_input = states[:, self.prefix_length :].view(-1, self.cnn_number * c, h, w)
+#         c, h, w = self.input_shape
+#         cnn_input = input[:, self.prefix_length :].view(-1, self.cnn_number * c, h, w)
 
-        # Forward pass through CNNs
-        cnn_outputs = []
-        for i in range(self.cnn_number):
-            cnn_output = self.cnns[i](cnn_input[:, i : i + 1, :, :]).view(states.size(0), -1)
-            cnn_outputs.append(cnn_output)
+#         # Forward pass through CNNs
+#         cnn_outputs = []
+#         for i in range(self.cnn_number):
+#             cnn_output = self.cnns[i](cnn_input[:, i : i + 1, :, :]).view(input.size(0), -1)
+#             cnn_outputs.append(cnn_output)
 
-        # Concatenate the outputs of prefix and CNNs
-        cnn_combined = torch.cat([prefix] + cnn_outputs, dim=1)
+#         # Concatenate the outputs
+#         combined = torch.cat([prefix] + cnn_outputs, dim=1)
 
-        # Forward pass through RNN
-        rnn_output, output_dict = self.rnn(cnn_combined, terminated, rnn_inputs)
-
-        # Concatenate the outputs of RNN, CNNs and prefix
-        combined = torch.cat([cnn_combined, rnn_output], dim=1)
-
-        # Forward pass through MLP
-        output = self.mlp(combined)
-
-        return output, output_dict
+#         # Forward pass through MLP
+#         output = self.mlp(combined)
+#         return output
 
 
-def crazy_net_example():
-    rnn_params = {
-        'num_envs': 2048,
-        'num_layers': 1,
-        'hidden_size': 512 + 256,
-        'sequence_length': 128,
-    }
+# def triple_cnn_and_mlp_example():
+#     cnn_params = {
+#         'input_shape': [1, 13, 13],
+#         'layers': [
+#             {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1, 'out_channels': 32, 'activation': 'relu'},
+#             {
+#                 'type': 'conv',
+#                 'kernel_size': 3,
+#                 'stride': 1,
+#                 'in_channels': 32,
+#                 'out_channels': 64,
+#                 'activation': 'relu',
+#             },
+#         ],
+#     }
 
-    cnn_params = {
-        'input_shape': [1, 13, 13],
-        'layers': [
-            {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1, 'out_channels': 32, 'activation': 'relu'},
-            {
-                'type': 'conv',
-                'kernel_size': 3,
-                'stride': 1,
-                'in_channels': 32,
-                'out_channels': 64,
-                'activation': 'relu',
-            },
-        ],
-    }
+#     mlp_params = {'hidden_units': [1024, 1024, 512], 'activations': ['elu', 'elu', 'elu']}
 
-    mlp_params = {'hidden_units': [1024, 1024, 512], 'activations': ['elu', 'elu', 'elu']}
+#     return TripleCnnAndMlp(cnn_params, mlp_params)
 
-    return CrazyNet(LSTM, rnn_params, cnn_params, mlp_params)
+
+
+# class CrazyNet(RnnBase):
+#     def __init__(self, rnn_class, rnn_params, cnn_params, mlp_params):
+#         super().__init__(rnn_params)
+
+#         self.input_shape = cnn_params['input_shape']
+
+#         self.prefix_length = 10
+#         self.cnn_number = 3
+
+#         self.cnns = nn.ModuleList([CNN(cnn_params) for _ in range(self.cnn_number)])
+
+#         rnn_params['input_size'] = self.prefix_length + self.cnn_number * get_output_size(
+#             self.cnns[0], self.input_shape
+#         )
+
+#         self.rnn = rnn_class(rnn_params)
+
+#         mlp_params['input_size'] = self.rnn.hidden_size + self.rnn.input_size
+
+#         self.mlp = MLP(mlp_params)
+
+#     def forward(self, states, terminated, rnn_inputs):
+#         # Split the input
+#         prefix = states[:, : self.prefix_length]
+
+#         c, h, w = self.input_shape
+#         cnn_input = states[:, self.prefix_length :].view(-1, self.cnn_number * c, h, w)
+
+#         # Forward pass through CNNs
+#         cnn_outputs = []
+#         for i in range(self.cnn_number):
+#             cnn_output = self.cnns[i](cnn_input[:, i : i + 1, :, :]).view(states.size(0), -1)
+#             cnn_outputs.append(cnn_output)
+
+#         # Concatenate the outputs of prefix and CNNs
+#         cnn_combined = torch.cat([prefix] + cnn_outputs, dim=1)
+
+#         # Forward pass through RNN
+#         rnn_output, output_dict = self.rnn(cnn_combined, terminated, rnn_inputs)
+
+#         # Concatenate the outputs of RNN, CNNs and prefix
+#         combined = torch.cat([cnn_combined, rnn_output], dim=1)
+
+#         # Forward pass through MLP
+#         output = self.mlp(combined)
+
+#         return output, output_dict
+
+
+# def crazy_net_example():
+#     rnn_params = {
+#         'num_envs': 2048,
+#         'num_layers': 1,
+#         'hidden_size': 512 + 256,
+#         'sequence_length': 128,
+#     }
+
+#     cnn_params = {
+#         'input_shape': [1, 13, 13],
+#         'layers': [
+#             {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1, 'out_channels': 32, 'activation': 'relu'},
+#             {
+#                 'type': 'conv',
+#                 'kernel_size': 3,
+#                 'stride': 1,
+#                 'in_channels': 32,
+#                 'out_channels': 64,
+#                 'activation': 'relu',
+#             },
+#         ],
+#     }
+
+#     mlp_params = {'hidden_units': [1024, 1024, 512], 'activations': ['elu', 'elu', 'elu']}
+
+#     return CrazyNet(LSTM, rnn_params, cnn_params, mlp_params)
