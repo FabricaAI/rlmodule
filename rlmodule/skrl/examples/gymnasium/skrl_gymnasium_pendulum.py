@@ -47,6 +47,7 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 # extensive comments
 # Launch new version to pip
 # Import new version in Isaac-lab
+# lazy linear? what is it ?
 
  
 
@@ -69,11 +70,11 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 def get_shared_model(env):
     # instantiate the agent's models (function approximators).
 
-    # net_cfg = MlpCfg(
-    #     input_size = env.observation_space,
-    #     hidden_units = [64, 64, 64],
-    #     activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
-    # )
+    net_cfg = MlpCfg(
+        input_size = env.observation_space,
+        hidden_units = [64, 64, 64],
+        activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+    )
 
     # 2
     # net_cfg = LstmCfg(

@@ -29,3 +29,18 @@ python3 rlmodule/skrl/examples/gymnasium/skrl_gymnasium_pendulum.py
 
 ## Update new version to PIP
 
+```
+pip install build twine
+```
+
+```
+rm -rf runs
+python -m build
+```
+
+```
+twine upload dist/*
+```
+
+
+
