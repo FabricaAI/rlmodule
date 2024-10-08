@@ -78,11 +78,6 @@ class RLModel(Model):
         self._lstm = contains_rnn_module( self, nn.LSTM)
         self._rnn = contains_rnn_module( self, (nn.LSTM, nn.RNN, nn.GRU))
         
-        
-        print("!rnn: ", self._rnn)
-        print("!lstm: ", self._lstm)
-
-
         print("!rnn: ", self._rnn)
         print("!lstm: ", self._lstm)
 
@@ -119,13 +114,6 @@ class RLModel(Model):
                             "sizes": [(self.net.num_layers, self.net.num_envs, self.net.hidden_size)]}}    # hidden states (D ∗ num_layers, N, Hout)
         else:
             return {}
-        
-    # TODO(ll) RNN & GRU has this simplier specification
-    # def get_specification(self):
-
-    #     # batch size (N) is the number of envs
-    #     return {"rnn": {"sequence_length": self.sequence_length,
-    #                     "sizes": [(self.num_layers, self.num_envs, self.hidden_size)]}}  # hidden states (D ∗ num_layers, N, Hout)
         
     def get_entropy(self, role: str = "") -> torch.Tensor:
         """Compute and return the entropy of the model

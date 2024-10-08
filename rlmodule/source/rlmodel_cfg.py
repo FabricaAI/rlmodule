@@ -25,6 +25,10 @@ class RLModelCfg(BaseRLCfg):
     class_type: type[RLModel] = RLModel
     output_layer: type[OutputLayerCfg] = GaussianLayerCfg()
     
+@configclass
+class SeparateRLModelCfg(BaseRLCfg):
+    policy: RLModelCfg = MISSING
+    value: RLModelCfg = MISSING
 
 @configclass
 class SharedRLModelCfg(BaseRLCfg):
