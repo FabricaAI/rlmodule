@@ -2,8 +2,8 @@ __all__ = [
     "build_model"
     "BaseRLCfg",
     "RLModelCfg",
-    "SeparateRLModelCfg",
+    "SeparatedRLModelCfg",
     "SharedRLModelCfg"
 ]
-from rlmodule.source.rlmodel_cfg import BaseRLCfg, RLModelCfg, SeparateRLModelCfg, SharedRLModelCfg
+from rlmodule.source.rlmodel_cfg import BaseRLCfg, RLModelCfg, SeparatedRLModelCfg, SharedRLModelCfg
 from rlmodule.source.build import build_model

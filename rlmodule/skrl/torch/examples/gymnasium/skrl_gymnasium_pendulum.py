@@ -2,7 +2,7 @@ import gymnasium as gym
 
 import torch.nn as nn
 
-from rlmodule.skrl.torch import build_model, SharedRLModelCfg, RLModelCfg
+from rlmodule.skrl.torch import build_model, SharedRLModelCfg, RLModelCfg, SeparatedRLModelCfg
 from rlmodule.skrl.torch.network import MlpCfg   
 from rlmodule.skrl.torch.output_layer import DeterministicLayerCfg, GaussianLayerCfg
 
