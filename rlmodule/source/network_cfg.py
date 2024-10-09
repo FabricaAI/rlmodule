@@ -26,7 +26,7 @@ class MlpCfg(NetworkCfg):
     module: type[MLP] = MLP
 
     hidden_units: List[int] = MISSING
-    activations: List[nn.Module] = MISSING
+    activations: List[type[nn.Module]] = MISSING
     
 
 @configclass

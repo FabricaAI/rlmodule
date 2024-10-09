@@ -68,7 +68,7 @@ class GaussianLayer(OutputLayer):
         
         self.net = nn.Sequential(
             nn.Linear(input_size,  cfg.output_size), 
-            cfg.output_activation
+            cfg.output_activation()
         )
 
         self.log_std_parameter = nn.Parameter(

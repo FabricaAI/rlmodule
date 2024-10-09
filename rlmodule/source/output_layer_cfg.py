@@ -23,7 +23,7 @@ class OutputLayerCfg:
 @configclass
 class GaussianLayerCfg(OutputLayerCfg):
     class_type: type[GaussianLayer] = GaussianLayer
-    output_activation: nn.Module = nn.Tanh()
+    output_activation: type[nn.Module] = nn.Tanh
 
     clip_log_std: bool = True
     min_log_std: float = -20

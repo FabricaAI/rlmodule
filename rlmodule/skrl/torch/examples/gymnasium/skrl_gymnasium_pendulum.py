@@ -56,7 +56,7 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 #         ),
 #         mlp = MlpCfg(
 #             hidden_units = [64, 64, 64],
-#             activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+#             activations = [nn.ReLU, nn.ReLU, nn.ReLU],
 #         ),
 #     )
 #     return RnnMlp(cfg)
@@ -67,7 +67,7 @@ def get_shared_model(env):
     net_cfg = MlpCfg(
         input_size = env.observation_space,
         hidden_units = [64, 64, 64],
-        activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+        activations = [nn.ReLU, nn.ReLU, nn.ReLU],
     )
 
     # 2
@@ -90,7 +90,7 @@ def get_shared_model(env):
     #     ),
     #     mlp = MlpCfg(
     #         hidden_units = [64, 64, 64],
-    #         activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+    #         activations = [nn.ReLU, nn.ReLU, nn.ReLU],
     #     ),
     # )
 
@@ -106,7 +106,7 @@ def get_shared_model(env):
     #     ),
     #     mlp = MlpCfg(
     #         hidden_units = [64, 64, 64],
-    #         activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+    #         activations = [nn.ReLU, nn.ReLU, nn.ReLU],
     #     ),
     # )
 
@@ -166,7 +166,7 @@ def get_separated_model(env):
     net_cfg = MlpCfg(
         input_size = env.observation_space,
         hidden_units = [64, 64, 64],
-        activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+        activations = [nn.ReLU, nn.ReLU, nn.ReLU],
     )
 
     policy_model = build_model( 
