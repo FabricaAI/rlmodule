@@ -25,14 +25,16 @@ class RLModelCfg(BaseRLCfg):
     class_type: type[RLModel] = RLModel
     output_layer: type[OutputLayerCfg] = GaussianLayerCfg()
     
-# TODO it should not inherit the BaseRLCfg.
-@configclass
-class SeparateRLModelCfg(BaseRLCfg):
-    policy: RLModelCfg = MISSING
-    value: RLModelCfg = MISSING
 
 @configclass
 class SharedRLModelCfg(BaseRLCfg):
     class_type: type[SharedRLModel] = SharedRLModel
     policy_output_layer: OutputLayerCfg = MISSING
     value_output_layer: OutputLayerCfg = MISSING
+
+
+@configclass
+class SeparatedRLModelCfg:
+    """Convenience class to hold two separate instances of RLModelCfg. One for policy and one for value model."""
+    policy: RLModelCfg = MISSING
+    value: RLModelCfg = MISSING
