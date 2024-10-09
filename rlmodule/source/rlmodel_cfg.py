@@ -25,6 +25,7 @@ class RLModelCfg(BaseRLCfg):
     class_type: type[RLModel] = RLModel
     output_layer: type[OutputLayerCfg] = GaussianLayerCfg()
     
+# TODO it should not inherit the BaseRLCfg.
 @configclass
 class SeparateRLModelCfg(BaseRLCfg):
     policy: RLModelCfg = MISSING

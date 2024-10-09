@@ -2,7 +2,7 @@ import gymnasium as gym
 
 import torch.nn as nn
 
-from rlmodule.skrl.torch import build_model, SharedRLModelCfg
+from rlmodule.skrl.torch import build_model, SharedRLModelCfg, RLModelCfg
 from rlmodule.skrl.torch.network import MlpCfg   
 from rlmodule.skrl.torch.output_layer import DeterministicLayerCfg, GaussianLayerCfg
 
@@ -162,40 +162,35 @@ def get_shared_model(env):
     return {'policy': model, 'value': model}
 
 # TODO Update separate model to configclass
-# def get_separate_model(env):
-#     # instantiate the agent's models (function approximators).
-#     params = {'input_size': env.observation_space, 
-#               'hidden_units': [64, 64, 64], 
-#               'activations': ['relu', 'relu', 'relu']
-#               }
-#     net = MLP(params)
+def get_separated_model(env):
+    net_cfg = MlpCfg(
+        input_size = env.observation_space,
+        hidden_units = [64, 64, 64],
+        activations = [nn.ReLU(), nn.ReLU(), nn.ReLU()],
+    )
 
-#     policy_model = RLModel(
-#         network=net,
-#         device= device,
-#         output_layer = GaussianLayer(
-#                 input_size=64,  # TODO
-#                 output_size=env.action_space,
-#                 output_activation=nn.Tanh(),
-#                 clip_actions=False,
-#                 clip_log_std=True,
-#                 min_log_std=-1.2,
-#                 max_log_std=2,
-#                 initial_log_std=0.2,
-#             ),
-#     )
+    policy_model = build_model( 
+        RLModelCfg(
+            network= net_cfg,
+            device= device,
+            output_layer= GaussianLayerCfg(
+                    output_size=env.action_space,
+                    min_log_std=-1.2,
+                    max_log_std=2,
+                    initial_log_std=0.2,
+                ),
+        )
+    )
 
-#     value_model = RLModel(
-#         network=net,
-#         device= device,
-#         output_layer = DeterministicLayer(
-#                 input_size=64,
-#                 output_size=1,
-#                 output_activation=nn.Identity(),
-#             ),
-#     )
+    value_model = build_model( 
+        RLModelCfg(
+            network= net_cfg,
+            device= device,
+            output_layer= DeterministicLayerCfg(),
+        )
+    )
 
-#     return {'policy': policy_model, 'value': value_model}
+    return {'policy': policy_model, 'value': value_model}
 
 
 # load and wrap the gymnasium environment.
@@ -216,6 +211,7 @@ device = env.device
 memory = RandomMemory(memory_size=1024, num_envs=env.num_envs, device=device)
 
 models = get_shared_model(env)
+#models = get_separated_model(env)
 
 print(models)
 

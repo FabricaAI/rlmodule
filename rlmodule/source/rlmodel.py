@@ -78,8 +78,8 @@ class RLModel(Model):
         self._lstm = contains_rnn_module( self, nn.LSTM)
         self._rnn = contains_rnn_module( self, (nn.LSTM, nn.RNN, nn.GRU))
         
-        print("!rnn: ", self._rnn)
-        print("!lstm: ", self._lstm)
+        print("is rnn: ", self._rnn)
+        print("is lstm: ", self._lstm)
 
         # TODO(ll) one liner:
         # self.net = nn.Sequential(network, self._get_num_units_by_shape(self.output_shape), torch.nn.Tanh())
@@ -151,14 +151,16 @@ class RLModel(Model):
             inputs: Mapping[str, Union[torch.Tensor, Any]],
             role: str = "") -> Tuple[torch.Tensor, Union[torch.Tensor, None], Mapping[str, Union[torch.Tensor, Any]]]:
         
+        states = inputs["states"]
+        
         # TODO(ll) once shared model is design, you may rethink this to do by call some function pointer or whatever.
         # or consider inheritance GaussianModelRNN
         # TODO(ll) if one of the models is not rnn ... and PPO_RNN is called what happens?
         if self._rnn:
-            output, output_dict = self.net(self._get_all_inputs(inputs), inputs.get('terminated', None), inputs['rnn'])
+            output, output_dict = self.net(states, inputs.get('terminated', None), inputs['rnn'])
         else:
 
-            output = self.net(self._get_all_inputs(inputs))
+            output = self.net(states)
             output_dict = {}
 
         # TODO(ll) passing by independetly as together sequential has just one input in forward
@@ -176,7 +178,7 @@ class RLModel(Model):
 
         # TODO(ll) output scale removed .. check that tanh where is
         # return output * self.instantiator_output_scale, self.log_std_parameter, {}
-        return output, self.log_std_parameter, output_dict
+        # return output, self.log_std_parameter, output_dict
 
 class SharedRLModel(Model):
     def __init__(self, 
@@ -241,8 +243,8 @@ class SharedRLModel(Model):
         self._lstm = contains_rnn_module( self, nn.LSTM)
         self._rnn = contains_rnn_module( self, (nn.LSTM, nn.RNN, nn.GRU))
         
-        print("!rnn: ", self._rnn)
-        print("!lstm: ", self._lstm)
+        print("is rnn: ", self._rnn)
+        print("is lstm: ", self._lstm)
 
         # caching for shared forward pass for policy and value roles
         self._cached_states = None
