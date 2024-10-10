@@ -14,7 +14,7 @@ class MLP(nn.Module):
         cfg = MlpCfg(
             input_size = 517,
             hidden_units = [2048, 1024, 1024, 512],
-            activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+            activation = nn.ELU,
         )
         net = MLP(cfg)
     """
@@ -26,13 +26,13 @@ class MLP(nn.Module):
         # input layer
         layers = [
             nn.Linear(cfg.input_size, cfg.hidden_units[0]),
-            cfg.activations[0](),
+            cfg.activation(),
         ]
 
         # hidden layers
         for i in range(len(cfg.hidden_units) - 1):
             layers.append(nn.Linear(cfg.hidden_units[i], cfg.hidden_units[i + 1]))
-            layers.append(cfg.activations[i + 1]())
+            layers.append(cfg.activation())
 
         self.mlp = nn.Sequential(*layers)
 
@@ -307,7 +307,7 @@ class RnnMlp(RnnBase):
                 ),
                 mlp = MlpCfg(
                     hidden_units = [2048, 1024, 1024, 512],
-                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                    activation = nn.ELU,
                 )
             )
         net = RnnMlp(cfg)
@@ -324,7 +324,7 @@ class RnnMlp(RnnBase):
                 ),
                 mlp = MlpCfg(
                     hidden_units = [2048, 1024, 1024, 512],
-                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                    activation = nn.ELU,
                 )
             )
         net = RnnMlp(cfg)
@@ -341,7 +341,7 @@ class RnnMlp(RnnBase):
                 ),
                 mlp = MlpCfg(
                     hidden_units = [2048, 1024, 1024, 512],
-                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                    activation = nn.ELU,
                 )
             )
         net = RnnMlp(cfg)
@@ -382,7 +382,7 @@ class RnnMlpWithForwardedInput(RnnBase):
                 ),
                 mlp = MlpCfg(
                     hidden_units = [2048, 1024, 1024, 512],
-                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                    activation = nn.ELU,
                 )
             )
         net = RnnMlp(cfg)
@@ -400,7 +400,7 @@ class RnnMlpWithForwardedInput(RnnBase):
                 ),
                 mlp = MlpCfg(
                     hidden_units = [2048, 1024, 1024, 512],
-                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                    activation = nn.ELU,
                 )
             )
         net = RnnMlp(cfg)
@@ -418,7 +418,7 @@ class RnnMlpWithForwardedInput(RnnBase):
                 ),
                 mlp = MlpCfg(
                     hidden_units = [2048, 1024, 1024, 512],
-                    activations = [nn.ELU(), nn.ELU(), nn.ELU(), nn.ELU()],
+                    activation = nn.ELU,
                 )
             )
         net = RnnMlp(cfg)

@@ -116,6 +116,9 @@ def get_space_size(space: Union[int, Sequence[int], gym.Space, gymnasium.Space],
             size = np.prod(space.shape)
         elif issubclass(type(space), gymnasium.spaces.Dict):
             size = sum([self._get_space_size(space.spaces[key], number_of_elements) for key in space.spaces])
+    elif space is None:
+        size = -1  # size will be inferred externally 
     if size is None:
         raise ValueError(f"Space type {type(space)} not supported")
+    print("s", size)
     return int(size)

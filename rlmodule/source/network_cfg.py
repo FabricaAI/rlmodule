@@ -18,15 +18,15 @@ except ImportError:
 @configclass
 class NetworkCfg:
     module: Union[nn.Module, Callable[..., nn.Module]] = MISSING
-    input_size: Union[int, Sequence[int], gym.Space, gymnasium.Space] = -1 # -1 means value should be inferred
+    input_size: Union[int, Sequence[int], gym.Space, gymnasium.Space] = None # None means value should be inferred
 
 
 @configclass
 class MlpCfg(NetworkCfg):
     module: type[MLP] = MLP
 
-    hidden_units: List[int] = MISSING
-    activations: List[type[nn.Module]] = MISSING
+    hidden_units: Sequence[int] = MISSING
+    activation: type[nn.Module] = MISSING
     
 
 @configclass

@@ -15,7 +15,7 @@ except ImportError:
 @configclass
 class OutputLayerCfg:
     class_type: type[nn.Module] = MISSING,
-    output_size: Union[int, Sequence[int], gym.Space, gymnasium.Space] = MISSING,  
+    output_size: Union[int, Sequence[int], gym.Space, gymnasium.Space] = None, # None is inferred  
     output_activation: nn.Module = MISSING,
 
     clip_actions: bool = False,  # TODO what is clip action doing
@@ -26,13 +26,13 @@ class GaussianLayerCfg(OutputLayerCfg):
     output_activation: type[nn.Module] = nn.Tanh
 
     clip_log_std: bool = True
-    min_log_std: float = -20
-    max_log_std: float = 2
-    initial_log_std: float = 0
+    min_log_std: float = -20.0
+    max_log_std: float = 2.0
+    initial_log_std: float = 0.0
     reduction: str = "sum"
 
 @configclass
 class DeterministicLayerCfg(OutputLayerCfg):
     class_type: type[DeterministicLayer] = DeterministicLayer
     output_size: Union[int, Sequence[int], gym.Space, gymnasium.Space] = 1
-    output_activation: nn.Module = nn.Identity()
+    output_activation: nn.Module = nn.Identity

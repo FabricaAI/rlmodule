@@ -3,7 +3,7 @@ import gymnasium as gym
 import torch.nn as nn
 
 from rlmodule.skrl.torch import build_model, SharedRLModelCfg, RLModelCfg, SeparatedRLModelCfg
-from rlmodule.skrl.torch.network import MlpCfg   
+from rlmodule.skrl.torch.network import MlpCfg, RnnMlpCfg, LstmCfg  
 from rlmodule.skrl.torch.output_layer import DeterministicLayerCfg, GaussianLayerCfg
 
 
@@ -56,7 +56,7 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 #         ),
 #         mlp = MlpCfg(
 #             hidden_units = [64, 64, 64],
-#             activations = [nn.ReLU, nn.ReLU, nn.ReLU],
+#             activation = nn.ReLU,
 #         ),
 #     )
 #     return RnnMlp(cfg)
@@ -64,11 +64,11 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 def get_shared_model(env):
     # instantiate the agent's models (function approximators).
 
-    net_cfg = MlpCfg(
-        input_size = env.observation_space,
-        hidden_units = [64, 64, 64],
-        activations = [nn.ReLU, nn.ReLU, nn.ReLU],
-    )
+    # net_cfg = MlpCfg(
+    #     input_size = env.observation_space,
+    #     hidden_units = [64, 64, 64],
+    #     activation = nn.ReLU,
+    # )
 
     # 2
     # net_cfg = LstmCfg(
@@ -80,19 +80,19 @@ def get_shared_model(env):
     # )
 
     # 3
-    # net_cfg = RnnMlpCfg(
-    #     input_size = env.observation_space,
-    #     rnn = LstmCfg(
-    #         num_envs = env.num_envs,
-    #         num_layers = 1,
-    #         hidden_size = 32,
-    #         sequence_length = 16,
-    #     ),
-    #     mlp = MlpCfg(
-    #         hidden_units = [64, 64, 64],
-    #         activations = [nn.ReLU, nn.ReLU, nn.ReLU],
-    #     ),
-    # )
+    net_cfg = RnnMlpCfg(
+        input_size = env.observation_space,
+        rnn = LstmCfg(
+            num_envs = env.num_envs,
+            num_layers = 1,
+            hidden_size = 32,
+            sequence_length = 16,
+        ),
+        mlp = MlpCfg(
+            hidden_units = [64, 64, 64],
+            activation = nn.ReLU,
+        ),
+    )
 
     # 3.5 
     # net_cfg = RnnMlpCfg(
@@ -106,7 +106,7 @@ def get_shared_model(env):
     #     ),
     #     mlp = MlpCfg(
     #         hidden_units = [64, 64, 64],
-    #         activations = [nn.ReLU, nn.ReLU, nn.ReLU],
+    #         activation = nn.ReLU,
     #     ),
     # )
 
@@ -129,36 +129,6 @@ def get_shared_model(env):
             value_output_layer= DeterministicLayerCfg(),
         )
     )
-    # RLCfg(
-    #     Model
-    #     AgentCfg
-    #     MemoryCfg
-    # )
-
-    # build_model(cfg.model)
-
-    # cfg.agent.algoclass(
-    #     cfg.agent.algo_config
-    #     cfg.memory
-    # )
-
-    # SharedRLModelCfg(RLModelCfg){
-    #     class = SharedRLModel
-
-    # }
-
-    # net
-    # output layers.class()
-
-    # cfg.model.class(  net, output_layers )
-
-    #configclass -> dataclass - easy (Ron said)
-
-
-    # variant V:
-    # ideas?
-
-
     return {'policy': model, 'value': model}
 
 # TODO Update separate model to configclass
@@ -166,7 +136,7 @@ def get_separated_model(env):
     net_cfg = MlpCfg(
         input_size = env.observation_space,
         hidden_units = [64, 64, 64],
-        activations = [nn.ReLU, nn.ReLU, nn.ReLU],
+        activation = nn.ReLU,
     )
 
     policy_model = build_model( 

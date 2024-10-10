@@ -141,7 +141,7 @@ class DeterministicLayer(OutputLayer):
 
         self.net = nn.Sequential(
             nn.Linear(input_size, cfg.output_size), 
-            cfg.output_activation
+            cfg.output_activation()
         )
 
     def forward(self, input, taken_actions, outputs_dict):
