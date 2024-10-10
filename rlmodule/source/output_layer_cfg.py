@@ -14,11 +14,11 @@ except ImportError:
 
 @configclass
 class OutputLayerCfg:
-    class_type: type[nn.Module] = MISSING,
-    output_size: Union[int, Sequence[int], gym.Space, gymnasium.Space] = None, # None is inferred  
-    output_activation: nn.Module = MISSING,
+    class_type: type[nn.Module] = MISSING
+    output_size: Union[int, Sequence[int], gym.Space, gymnasium.Space] = None # None is inferred  
+    output_activation: nn.Module = MISSING
 
-    clip_actions: bool = False,  # TODO what is clip action doing
+    clip_actions: bool = False  # TODO what is clip action doing
 
 @configclass
 class GaussianLayerCfg(OutputLayerCfg):
