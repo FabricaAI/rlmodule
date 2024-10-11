@@ -21,7 +21,8 @@ from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
 
 # todo set seed
 # seed for reproducibility
-set_seed()  # e.g. `set_seed(42)` for fixed seed
+seed = 42
+set_seed(seed)  # e.g. `set_seed(42)` for fixed seed
 
 #TODO next
 # (Done) check how to do own @configclass .. or use one from isaac by default (print something to know version)
@@ -64,11 +65,11 @@ set_seed()  # e.g. `set_seed(42)` for fixed seed
 def get_shared_model(env):
     # instantiate the agent's models (function approximators).
 
-    # net_cfg = MlpCfg(
-    #     input_size = env.observation_space,
-    #     hidden_units = [64, 64, 64],
-    #     activation = nn.ReLU,
-    # )
+    net_cfg = MlpCfg(
+        input_size = env.observation_space,
+        hidden_units = [64, 64, 64],
+        activation = nn.ReLU,
+    )
 
     # 2
     # net_cfg = LstmCfg(
@@ -80,19 +81,19 @@ def get_shared_model(env):
     # )
 
     # 3
-    net_cfg = RnnMlpCfg(
-        input_size = env.observation_space,
-        rnn = LstmCfg(
-            num_envs = env.num_envs,
-            num_layers = 1,
-            hidden_size = 32,
-            sequence_length = 16,
-        ),
-        mlp = MlpCfg(
-            hidden_units = [64, 64, 64],
-            activation = nn.ReLU,
-        ),
-    )
+    # net_cfg = RnnMlpCfg(
+    #     input_size = env.observation_space,
+    #     rnn = LstmCfg(
+    #         num_envs = env.num_envs,
+    #         num_layers = 1,
+    #         hidden_size = 32,
+    #         sequence_length = 16,
+    #     ),
+    #     mlp = MlpCfg(
+    #         hidden_units = [64, 64, 64],
+    #         activation = nn.ReLU,
+    #     ),
+    # )
 
     # 3.5 
     # net_cfg = RnnMlpCfg(
@@ -171,6 +172,8 @@ except (gym.error.DeprecatedEnv, gym.error.VersionNotFound) as e:
     env_id = [spec for spec in gym.envs.registry if spec.startswith("Pendulum-v")][0]
     print("Pendulum-v1 not found. Trying {}".format(env_id))
     env = gym.vector.make(env_id, num_envs=4, asynchronous=False)
+
+env.reset(seed=seed)
 
 env = GymnasiumWrapper(env)
 

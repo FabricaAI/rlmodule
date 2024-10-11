@@ -120,5 +120,4 @@ def get_space_size(space: Union[int, Sequence[int], gym.Space, gymnasium.Space],
         size = -1  # size will be inferred externally 
     if size is None:
         raise ValueError(f"Space type {type(space)} not supported")
-    print("s", size)
     return int(size)

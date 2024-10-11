@@ -7,7 +7,7 @@ import torch
 from torch.distributions import Normal
 
 
-class GaussianMixin:
+class DeprecatedGaussianMixin:
     def __init__(self,
                  clip_actions: bool = False,
                  clip_log_std: bool = True,

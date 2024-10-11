@@ -129,7 +129,7 @@ class RLModel(Model):
             >>> print(entropy.shape)
             torch.Size([4096, 8])
         """
-        return self.output_layer.mixin.get_entropy(role)
+        return self.output_layer.get_entropy(role)
     
     def distribution(self, role: str = "") -> torch.distributions.Normal:
         """Get the current distribution of the model
@@ -145,7 +145,7 @@ class RLModel(Model):
             >>> print(distribution)
             Normal(loc: torch.Size([4096, 8]), scale: torch.Size([4096, 8]))
         """
-        return self.output_layer.mixin.distribution(role)
+        return self.output_layer.distribution(role)
         
     def act(self,
             inputs: Mapping[str, Union[torch.Tensor, Any]],
@@ -298,7 +298,7 @@ class SharedRLModel(Model):
             >>> print(entropy.shape)
             torch.Size([4096, 8])
         """
-        return self.policy_output_layer.mixin.get_entropy(role)
+        return self.policy_output_layer.get_entropy(role)
     
     def distribution(self, role: str = "") -> torch.distributions.Normal:
         """Get the current distribution of the model
@@ -314,7 +314,7 @@ class SharedRLModel(Model):
             >>> print(distribution)
             Normal(loc: torch.Size([4096, 8]), scale: torch.Size([4096, 8]))
         """
-        return self.policy_output_layer.mixin.distribution(role)
+        return self.policy_output_layer.distribution(role)
     
     def _have_cached_states(self, states):
         return (self._cached_states is not None 
