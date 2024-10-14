@@ -17,38 +17,7 @@ class RLModel(Model):
 
         super().__init__(device, network)
         self._output_layer = output_layer
-        
-    def get_entropy(self, role: str = "") -> torch.Tensor:
-        """Compute and return the entropy of the model
-
-        :return: Entropy of the model
-        :rtype: torch.Tensor
-        :param role: Role play by the model (default: ``""``)
-        :type role: str, optional
-
-        Example::
-
-            >>> entropy = model.get_entropy()
-            >>> print(entropy.shape)
-            torch.Size([4096, 8])
-        """
-        return self._output_layer.get_entropy(role)
-    
-    def distribution(self, role: str = "") -> torch.distributions.Normal:
-        """Get the current distribution of the model
-
-        :return: Distribution of the model
-        :rtype: torch.distributions.Normal
-        :param role: Role play by the model (default: ``""``)
-        :type role: str, optional
-
-        Example::
-
-            >>> distribution = model.distribution()
-            >>> print(distribution)
-            Normal(loc: torch.Size([4096, 8]), scale: torch.Size([4096, 8]))
-        """
-        return self._output_layer.distribution(role)
+        self._policy_output_layer = self._output_layer
         
     def act(self,
             inputs: Mapping[str, Union[torch.Tensor, Any]],
@@ -78,45 +47,13 @@ class SharedRLModel(Model):
 
         super().__init__(device, network)
 
-        self.policy_output_layer = policy_output_layer
-        self.value_output_layer = value_output_layer
+        self._policy_output_layer = policy_output_layer
+        self._value_output_layer = value_output_layer
 
         # caching for shared forward pass for policy and value roles
         self._cached_states = None
         self._cached_outputs = None
 
-        
-    def get_entropy(self, role: str = "") -> torch.Tensor:
-        """Compute and return the entropy of the model
-
-        :return: Entropy of the model
-        :rtype: torch.Tensor
-        :param role: Role play by the model (default: ``""``)
-        :type role: str, optional
-
-        Example::
-
-            >>> entropy = model.get_entropy()
-            >>> print(entropy.shape)
-            torch.Size([4096, 8])
-        """
-        return self.policy_output_layer.get_entropy(role)
-    
-    def distribution(self, role: str = "") -> torch.distributions.Normal:
-        """Get the current distribution of the model
-
-        :return: Distribution of the model
-        :rtype: torch.distributions.Normal
-        :param role: Role play by the model (default: ``""``)
-        :type role: str, optional
-
-        Example::
-
-            >>> distribution = model.distribution()
-            >>> print(distribution)
-            Normal(loc: torch.Size([4096, 8]), scale: torch.Size([4096, 8]))
-        """
-        return self.policy_output_layer.distribution(role)
     
     def _have_cached_states(self, states):
         return (self._cached_states is not None 
@@ -142,6 +79,6 @@ class SharedRLModel(Model):
         output, output_dict = self._cached_output
         
         if role == "policy":
-            return self.policy_output_layer(output, inputs.get('taken_actions', None),  output_dict)
+            return self._policy_output_layer(output, inputs.get('taken_actions', None),  output_dict)
         elif role == "value":
-            return self.value_output_layer(output, inputs.get('taken_actions', None),  output_dict)
+            return self._value_output_layer(output, inputs.get('taken_actions', None),  output_dict)

@@ -37,6 +37,37 @@ class Model(torch.nn.Module):
 
         self._random_distribution = None
 
+    def get_entropy(self, role: str = "") -> torch.Tensor:
+        """Compute and return the entropy of the model
+
+        :return: Entropy of the model
+        :rtype: torch.Tensor
+        :param role: Role play by the model (default: ``""``)
+        :type role: str, optional
+
+        Example::
+
+            >>> entropy = model.get_entropy()
+            >>> print(entropy.shape)
+            torch.Size([4096, 8])
+        """
+        return self._policy_output_layer.get_entropy(role)
+    
+    def distribution(self, role: str = "") -> torch.distributions.Normal:
+        """Get the current distribution of the model
+
+        :return: Distribution of the model
+        :rtype: torch.distributions.Normal
+        :param role: Role play by the model (default: ``""``)
+        :type role: str, optional
+
+        Example::
+
+            >>> distribution = model.distribution()
+            >>> print(distribution)
+            Normal(loc: torch.Size([4096, 8]), scale: torch.Size([4096, 8]))
+        """
+        return self._policy_output_layer.distribution(role)
 
     #TODO(ll) only needed for LSTM, RNN, GRU .. PPO_RNN
     #TODO(ll) consider adding it to Base model.
