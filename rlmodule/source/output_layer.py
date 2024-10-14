@@ -257,7 +257,17 @@ class DeterministicLayer(OutputLayer):
         """
 
         super().__init__(device, input_size, cfg)
-        self.mixin = DeterministicMixin(cfg.clip_actions)
+        #self.mixin = DeterministicMixin(cfg.clip_actions)
+
+        #### NEW
+        # TODO can be done in common class OutputLayer
+        # self._clip_actions = clip_actions and (issubclass(type(self.action_space), gym.Space) or \
+        #     issubclass(type(self.action_space), gymnasium.Space))
+
+        # if self._clip_actions:
+        #     self._clip_actions_min = torch.tensor(self.action_space.low, device=self.device, dtype=torch.float32)
+        #     self._clip_actions_max = torch.tensor(self.action_space.high, device=self.device, dtype=torch.float32)
+        ####
 
         self.net = nn.Sequential(
             nn.Linear(input_size, cfg.output_size), 
@@ -266,5 +276,9 @@ class DeterministicLayer(OutputLayer):
 
     def forward(self, input, taken_actions, outputs_dict):
 
-        output = self.net(input)
-        return self.mixin.forward(output, outputs_dict)
+        actions = self.net(input)
+
+        # clip actions # TODO enable
+        # if self._clip_actions:
+        #     actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
+        return actions, None, outputs_dict
