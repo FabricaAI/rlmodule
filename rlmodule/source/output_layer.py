@@ -9,7 +9,7 @@ from torch.distributions import Normal
 
 from rlmodule.source.utils import get_space_size
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 # TODO type checking not working
 if TYPE_CHECKING:
@@ -32,42 +32,17 @@ class OutputLayer(nn.Module):
 
 
 class GaussianLayer(OutputLayer):
-    def __init__(self, 
-                device,
-                input_size,
-                cfg
-                ):
-        """Gaussian model
+    def __init__(self, device: Union[str, torch.device], input_size: int, cfg):
+        """Gaussian output layer
 
-        :param observation_space: Observation/state space or shape (default: None).
-                                If it is not None, the num_observations property will contain the size of that space
-        :type observation_space: int, tuple or list of integers, gym.Space, gymnasium.Space or None, optional
-        :param action_space: Action space or shape (default: None).
-                            If it is not None, the num_actions property will contain the size of that space
-        :type action_space: int, tuple or list of integers, gym.Space, gymnasium.Space or None, optional
-        :param input_shape todo(ll)
-        :type input_shape
-        :param output_shape todo(ll)
-        :type output_shape
-        :param network todo(ll) description + optional?
-        :type network
-        :param device: Device on which a tensor/array is or will be allocated (default: ``None``).
-                    If None, the device will be either ``"cuda"`` if available or ``"cpu"``
-        :type device: str or torch.device, optional
-        :param clip_actions: Flag to indicate whether the actions should be clipped (default: False)
-        :type clip_actions: bool, optional
-        :param clip_log_std: Flag to indicate whether the log standard deviations should be clipped (default: True)
-        :type clip_log_std: bool, optional
-        :param min_log_std: Minimum value of the log standard deviation (default: -20)
-        :type min_log_std: float, optional
-        :param max_log_std: Maximum value of the log standard deviation (default: 2)
-        :type max_log_std: float, optional
-        :param initial_log_std: Initial value for the log standard deviation (default: 0)
-        :type initial_log_std: float, optional
-        :param reduction: Reduction method for returning the log probability density function: (default: ``"sum"``).
-                        Supported values are ``"mean"``, ``"sum"``, ``"prod"`` and ``"none"``. If "``none"``, the log probability density
-                        function is returned as a tensor of shape ``(num_samples, num_actions)`` instead of ``(num_samples, 1)``
-        :type reduction: str, optional
+        :param device: Device on which a tensor/array is or will be allocated
+        :type device: str or torch.device
+        :param input_size
+        :type int
+        :param cfg: Configuration of Gaussian output layer
+        :type OutputLayerCfg
+
+        :raises ValueError: If the reduction method is not valid
         """
         super().__init__(device, input_size, cfg)
 
@@ -95,8 +70,29 @@ class GaussianLayer(OutputLayer):
         
         
     def forward(self, input, taken_actions, outputs_dict):
+        """Act stochastically in response to the state of the environment
 
-        
+        :param inputs: Model inputs. The most common keys are:
+
+                       - ``"states"``: state of the environment used to make the decision
+                       - ``"taken_actions"``: actions taken by the policy for the given states
+        :type inputs: dict where the values are typically torch.Tensor
+        :param role: Role play by the model (default: ``""``)
+        :type role: str, optional
+
+        :return: Model output. The first component is the action to be taken by the agent.
+                 The second component is the log of the probability density function.
+                 The third component is a dictionary containing the mean actions ``"mean_actions"``
+                 and extra output values
+        :rtype: tuple of torch.Tensor, torch.Tensor or None, and dict
+
+        Example::
+
+            >>> # given a batch of sample states with shape (4096, 60)
+            >>> actions, log_prob, outputs = model.act({"states": states})
+            >>> print(actions.shape, log_prob.shape, outputs["mean_actions"].shape)
+            torch.Size([4096, 8]) torch.Size([4096, 1]) torch.Size([4096, 8])
+        """
         mean_actions = self._net(input)
         
         log_std = self._log_std_parameter
@@ -236,6 +232,49 @@ class DeterministicLayer(OutputLayer):
         :return: Deterministic model instance
         :rtype: Model
         """
+        """Deterministic mixin model (deterministic model)
+
+        :param clip_actions: Flag to indicate whether the actions should be clipped to the action space (default: ``False``)
+        :type clip_actions: bool, optional
+        :param role: Role play by the model (default: ``""``)
+        :type role: str, optional
+
+        Example::
+
+            # define the model
+            >>> import torch
+            >>> import torch.nn as nn
+            >>> from skrl.models.torch import Model, DeterministicMixin
+            >>>
+            >>> class Value(DeterministicMixin, Model):
+            ...     def __init__(self, observation_space, action_space, device="cuda:0", clip_actions=False):
+            ...         Model.__init__(self, observation_space, action_space, device)
+            ...         DeterministicMixin.__init__(self, clip_actions)
+            ...
+            ...         self.net = nn.Sequential(nn.Linear(self.num_observations, 32),
+            ...                                  nn.ELU(),
+            ...                                  nn.Linear(32, 32),
+            ...                                  nn.ELU(),
+            ...                                  nn.Linear(32, 1))
+            ...
+            ...     def compute(self, inputs, role):
+            ...         return self.net(inputs["states"]), {}
+            ...
+            >>> # given an observation_space: gym.spaces.Box with shape (60,)
+            >>> # and an action_space: gym.spaces.Box with shape (8,)
+            >>> model = Value(observation_space, action_space)
+            >>>
+            >>> print(model)
+            Value(
+              (net): Sequential(
+                (0): Linear(in_features=60, out_features=32, bias=True)
+                (1): ELU(alpha=1.0)
+                (2): Linear(in_features=32, out_features=32, bias=True)
+                (3): ELU(alpha=1.0)
+                (4): Linear(in_features=32, out_features=1, bias=True)
+              )
+            )
+        """
 
         super().__init__(device, input_size, cfg)
 
@@ -245,6 +284,27 @@ class DeterministicLayer(OutputLayer):
         )
 
     def forward(self, input, taken_actions, outputs_dict):
+        """Act deterministically in response to the state of the environment
+
+        :param inputs: Model inputs. The most common keys are:
+
+                       - ``"states"``: state of the environment used to make the decision
+                       - ``"taken_actions"``: actions taken by the policy for the given states
+        :type inputs: dict where the values are typically torch.Tensor
+        :param role: Role play by the model (default: ``""``)
+        :type role: str, optional
+
+        :return: Model output. The first component is the action to be taken by the agent.
+                 The second component is ``None``. The third component is a dictionary containing extra output values
+        :rtype: tuple of torch.Tensor, torch.Tensor or None, and dict
+
+        Example::
+
+            >>> # given a batch of sample states with shape (4096, 60)
+            >>> actions, _, outputs = model.act({"states": states})
+            >>> print(actions.shape, outputs)
+            torch.Size([4096, 1]) {}
+        """
 
         actions = self._net(input)
 
