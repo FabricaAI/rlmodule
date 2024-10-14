@@ -16,7 +16,8 @@ if TYPE_CHECKING:
     from rlmodule.source.output_layer_cfg import OutputLayerCfg, GaussianLayerCfg, DeterministicLayerCfg
 
 class OutputLayer(nn.Module):
-    def __init__(self, device, input_size, cfg):
+    def __init__(self, device: Union[str, torch.device], input_size: int, cfg):
+        """Base class for OutputLayer class hierarchy."""
         super().__init__()
         self.device = device
 
@@ -196,84 +197,15 @@ class GaussianLayer(OutputLayer):
 
 
 class DeterministicLayer(OutputLayer):
-    def __init__(self, 
-                device,
-                input_size,
-                cfg
-                ):
-        """Deterministic model
+    def __init__(self, device: Union[str, torch.device], input_size: int, cfg):
+        """Deterministic output layer
 
-        TODO(ll) update doc string
-        :param observation_space: Observation/state space or shape (default: None).
-                                If it is not None, the num_observations property will contain the size of that space
-        :type observation_space: int, tuple or list of integers, gym.Space, gymnasium.Space or None, optional
-        :param action_space: Action space or shape (default: None).
-                            If it is not None, the num_actions property will contain the size of that space
-        :type action_space: int, tuple or list of integers, gym.Space, gymnasium.Space or None, optional
-        :param device: Device on which a tensor/array is or will be allocated (default: ``None``).
-                    If None, the device will be either ``"cuda"`` if available or ``"cpu"``
-        :type device: str or torch.device, optional
-        :param clip_actions: Flag to indicate whether the actions should be clipped to the action space (default: False)
-        :type clip_actions: bool, optional
-        :param input_shape: Shape of the input (default: Shape.STATES)
-        :type input_shape: Shape, optional
-        :param hiddens: Number of hidden units in each hidden layer
-        :type hiddens: int or list of ints
-        :param hidden_activation: Activation function for each hidden layer (default: "relu").
-        :type hidden_activation: list of strings
-        :param output_shape: Shape of the output (default: Shape.ACTIONS)
-        :type output_shape: Shape, optional
-        :param output_activation: Activation function for the output layer (default: "tanh")
-        :type output_activation: str or None, optional
-        :param output_scale: Scale of the output layer (default: 1.0).
-                            If None, the output layer will not be scaled
-        :type output_scale: float, optional
-
-        :return: Deterministic model instance
-        :rtype: Model
-        """
-        """Deterministic mixin model (deterministic model)
-
-        :param clip_actions: Flag to indicate whether the actions should be clipped to the action space (default: ``False``)
-        :type clip_actions: bool, optional
-        :param role: Role play by the model (default: ``""``)
-        :type role: str, optional
-
-        Example::
-
-            # define the model
-            >>> import torch
-            >>> import torch.nn as nn
-            >>> from skrl.models.torch import Model, DeterministicMixin
-            >>>
-            >>> class Value(DeterministicMixin, Model):
-            ...     def __init__(self, observation_space, action_space, device="cuda:0", clip_actions=False):
-            ...         Model.__init__(self, observation_space, action_space, device)
-            ...         DeterministicMixin.__init__(self, clip_actions)
-            ...
-            ...         self.net = nn.Sequential(nn.Linear(self.num_observations, 32),
-            ...                                  nn.ELU(),
-            ...                                  nn.Linear(32, 32),
-            ...                                  nn.ELU(),
-            ...                                  nn.Linear(32, 1))
-            ...
-            ...     def compute(self, inputs, role):
-            ...         return self.net(inputs["states"]), {}
-            ...
-            >>> # given an observation_space: gym.spaces.Box with shape (60,)
-            >>> # and an action_space: gym.spaces.Box with shape (8,)
-            >>> model = Value(observation_space, action_space)
-            >>>
-            >>> print(model)
-            Value(
-              (net): Sequential(
-                (0): Linear(in_features=60, out_features=32, bias=True)
-                (1): ELU(alpha=1.0)
-                (2): Linear(in_features=32, out_features=32, bias=True)
-                (3): ELU(alpha=1.0)
-                (4): Linear(in_features=32, out_features=1, bias=True)
-              )
-            )
+        :param device: Device on which a tensor/array is or will be allocated
+        :type device: str or torch.device
+        :param input_size
+        :type int
+        :param cfg: Configuration of Gaussian output layer
+        :type OutputLayerCfg
         """
 
         super().__init__(device, input_size, cfg)
