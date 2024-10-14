@@ -5,7 +5,6 @@ import torch.nn as nn
 from torch.distributions import Normal
 
 from rlmodule.source.utils import get_space_size
-from .deprecated import DeterministicMixin  # noqa
 
 from typing import TYPE_CHECKING
 
