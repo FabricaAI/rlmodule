@@ -69,12 +69,29 @@ class Model(torch.nn.Module):
         """
         return self._policy_output_layer.distribution(role)
 
-    #TODO(ll) only needed for LSTM, RNN, GRU .. PPO_RNN
-    #TODO(ll) consider adding it to Base model.
-    # Recurrent Neural Network (RNN) specification for RNN, LSTM and GRU layers/cells
-    def get_specification(self):   
+    def get_specification(self) -> Mapping[str, Any]:
+        """Returns the specification of the model
+
+        The following keys are used by the agents for initialization:
+
+        - ``"rnn"``: Recurrent Neural Network (RNN) specification for RNN, LSTM and GRU layers/cells
+
+          - ``"sizes"``: List of RNN shapes (number of layers, number of environments, number of features in the RNN state).
+            There must be as many tuples as there are states in the recurrent layer/cell. E.g., LSTM has 2 states (hidden and cell).
+
+        :return: Dictionary containing advanced specification of the model
+        :rtype: dict
+
+        Example::
+
+            # model with a LSTM layer.
+            # - number of layers: 1
+            # - number of environments: 4
+            # - number of features in the RNN state: 64
+            >>> model.get_specification()
+            {'rnn': {'sizes': [(1, 4, 64), (1, 4, 64)]}}
+        """   
         if self._lstm:
-            # batch size (N) is the number of envs
             return {"rnn": {"sequence_length": self._net.sequence_length,
                             "sizes": [(self._net.num_layers, self._net.num_envs, self._net.hidden_size),    # hidden states (D ∗ num_layers, N, Hout)
                                       (self._net.num_layers, self._net.num_envs, self._net.hidden_size)]}}  # cell states   (D ∗ num_layers, N, Hcell)
