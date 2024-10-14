@@ -4,185 +4,56 @@ import collections
 import gym
 import gymnasium
 
-import numpy as np
 import torch
+import torch.nn as nn
 
+# TODO do not depend on skrl, also remove skrl from pyproject.toml
 from skrl import config, logger
 
-from enum import Enum
-
-# TODO remove this 
-class Shape(Enum):
-    """
-    Enum to select the shape of the model's inputs and outputs
-    """
-    ONE = 1
-    STATES = 0
-    OBSERVATIONS = 0
-    ACTIONS = -1
-    STATES_ACTIONS = -2
+def contains_rnn_module(module: nn.Module, module_types):
+    for submodule in module.modules():
+        if isinstance(submodule, module_types):
+            return True
+    return False
 
 
 class Model(torch.nn.Module):
     def __init__(self,
-                 device: Optional[Union[str, torch.device]] = None) -> None:
+                 device: Union[str, torch.device],
+                 network: nn.Module) -> None:
         """Base class representing a function approximator
-
-        The following properties are defined:
-
-        - ``device`` (torch.device): Device to be used for the computations
-        - ``observation_space`` (int, sequence of int, gym.Space, gymnasium.Space): Observation/state space
-        - ``action_space`` (int, sequence of int, gym.Space, gymnasium.Space): Action space
-        - ``num_observations`` (int): Number of elements in the observation/state space
-        - ``num_actions`` (int): Number of elements in the action space
-
-        :param observation_space: Observation/state space or shape.
-                                  The ``num_observations`` property will contain the size of that space
-        :type observation_space: int, sequence of int, gym.Space, gymnasium.Space
-        :param action_space: Action space or shape.
-                             The ``num_actions`` property will contain the size of that space
-        :type action_space: int, sequence of int, gym.Space, gymnasium.Space
-        :param device: Device on which a tensor/array is or will be allocated (default: ``None``).
-                       If None, the device will be either ``"cuda"`` if available or ``"cpu"``
-        :type device: str or torch.device, optional
-
-        Custom models should override the ``act`` method::
-
-            import torch
-            from skrl.models.torch import Model
-
-            class CustomModel(Model):
-                def __init__(self, observation_space, action_space, device="cuda:0"):
-                    Model.__init__(self, observation_space, action_space, device)
-
-                    self.layer_1 = nn.Linear(self.num_observations, 64)
-                    self.layer_2 = nn.Linear(64, self.num_actions)
-
-                def act(self, inputs, role=""):
-                    x = F.relu(self.layer_1(inputs["states"]))
-                    x = F.relu(self.layer_2(x))
-                    return x, None, {}
         """
-        super(Model, self).__init__()
+        super().__init__()
 
+        # TODO check if this is done outside. also it is not optional rn.
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") if device is None else torch.device(device)
+        self._net = network
 
-        # self.observation_space = observation_space
-        # self.action_space = action_space
-        # self.num_observations = None if observation_space is None else self._get_space_size(observation_space)
-        # self.num_actions = None if action_space is None else self._get_space_size(action_space)
+        self._lstm = contains_rnn_module( self, nn.LSTM)
+        self._rnn = contains_rnn_module( self, (nn.LSTM, nn.RNN, nn.GRU))
+        
+        print("is rnn: ", self._rnn)
+        print("is lstm: ", self._lstm)
 
         self._random_distribution = None
 
-        
-    # def _get_all_inputs(self, inputs):
-    #     """TODO(ll) comment"""
-    #     # TODO(ll) is it a bad design to invoke self.input_shape that only lives in inherited classes
-    #     if self.input_shape == Shape.STATES:
-    #         return inputs["states"]
-    #     # TODO(ll) does this ever makes sense to call without states?
-    #     elif self.input_shape == Shape.ACTIONS:
-    #         return inputs["taken_actions"]
-    #     elif self.input_shape == Shape.STATES_ACTIONS:
-    #         return torch.cat((inputs["states"], inputs["taken_actions"]), dim=1)
-    #     else:
-    #         raise ValueError(f"Unknown input shape: {self.input_shape}")
-        
-    ### new methods
 
-    # def _get_space_size(self,
-    #                     space: Union[int, Sequence[int], gym.Space, gymnasium.Space],
-    #                     number_of_elements: bool = True) -> int:
-    #     """Get the size (number of elements) of a space
-
-    #     :param space: Space or shape from which to obtain the number of elements
-    #     :type space: int, sequence of int, gym.Space, or gymnasium.Space
-    #     :param number_of_elements: Whether the number of elements occupied by the space is returned (default: ``True``).
-    #                                If ``False``, the shape of the space is returned.
-    #                                It only affects Discrete and MultiDiscrete spaces
-    #     :type number_of_elements: bool, optional
-
-    #     :raises ValueError: If the space is not supported
-
-    #     :return: Size of the space (number of elements)
-    #     :rtype: int
-
-    #     Example::
-
-    #         # from int
-    #         >>> model._get_space_size(2)
-    #         2
-
-    #         # from sequence of int
-    #         >>> model._get_space_size([2, 3])
-    #         6
-
-    #         # Box space
-    #         >>> space = gym.spaces.Box(low=-1, high=1, shape=(2, 3))
-    #         >>> model._get_space_size(space)
-    #         6
-
-    #         # Discrete space
-    #         >>> space = gym.spaces.Discrete(4)
-    #         >>> model._get_space_size(space)
-    #         4
-    #         >>> model._get_space_size(space, number_of_elements=False)
-    #         1
-
-    #         # MultiDiscrete space
-    #         >>> space = gym.spaces.MultiDiscrete([5, 3, 2])
-    #         >>> model._get_space_size(space)
-    #         10
-    #         >>> model._get_space_size(space, number_of_elements=False)
-    #         3
-
-    #         # Dict space
-    #         >>> space = gym.spaces.Dict({'a': gym.spaces.Box(low=-1, high=1, shape=(2, 3)),
-    #         ...                          'b': gym.spaces.Discrete(4)})
-    #         >>> model._get_space_size(space)
-    #         10
-    #         >>> model._get_space_size(space, number_of_elements=False)
-    #         7
-    #     """
-    #     size = None
-    #     if type(space) in [int, float]:
-    #         size = space
-    #     elif type(space) in [tuple, list]:
-    #         size = np.prod(space)
-    #     elif issubclass(type(space), gym.Space):
-    #         if issubclass(type(space), gym.spaces.Discrete):
-    #             if number_of_elements:
-    #                 size = space.n
-    #             else:
-    #                 size = 1
-    #         elif issubclass(type(space), gym.spaces.MultiDiscrete):
-    #             if number_of_elements:
-    #                 size = np.sum(space.nvec)
-    #             else:
-    #                 size = space.nvec.shape[0]
-    #         elif issubclass(type(space), gym.spaces.Box):
-    #             size = np.prod(space.shape)
-    #         elif issubclass(type(space), gym.spaces.Dict):
-    #             size = sum([self._get_space_size(space.spaces[key], number_of_elements) for key in space.spaces])
-    #     elif issubclass(type(space), gymnasium.Space):
-    #         if issubclass(type(space), gymnasium.spaces.Discrete):
-    #             if number_of_elements:
-    #                 size = space.n
-    #             else:
-    #                 size = 1
-    #         elif issubclass(type(space), gymnasium.spaces.MultiDiscrete):
-    #             if number_of_elements:
-    #                 size = np.sum(space.nvec)
-    #             else:
-    #                 size = space.nvec.shape[0]
-    #         elif issubclass(type(space), gymnasium.spaces.Box):
-    #             size = np.prod(space.shape)
-    #         elif issubclass(type(space), gymnasium.spaces.Dict):
-    #             size = sum([self._get_space_size(space.spaces[key], number_of_elements) for key in space.spaces])
-    #     if size is None:
-    #         raise ValueError(f"Space type {type(space)} not supported")
-    #     return int(size)
-
+    #TODO(ll) only needed for LSTM, RNN, GRU .. PPO_RNN
+    #TODO(ll) consider adding it to Base model.
+    # Recurrent Neural Network (RNN) specification for RNN, LSTM and GRU layers/cells
+    def get_specification(self):   
+        if self._lstm:
+            # batch size (N) is the number of envs
+            return {"rnn": {"sequence_length": self._net.sequence_length,
+                            "sizes": [(self._net.num_layers, self._net.num_envs, self._net.hidden_size),    # hidden states (D ∗ num_layers, N, Hout)
+                                      (self._net.num_layers, self._net.num_envs, self._net.hidden_size)]}}  # cell states   (D ∗ num_layers, N, Hcell)
+        elif self._rnn:
+            return {"rnn": {"sequence_length": self._net.sequence_length,
+                            "sizes": [(self._net.num_layers, self._net.num_envs, self._net.hidden_size)]}}    # hidden states (D ∗ num_layers, N, Hout)
+        else:
+            return {}
+    
+    
     def tensor_to_space(self,
                         tensor: torch.Tensor,
                         space: Union[gym.Space, gymnasium.Space],

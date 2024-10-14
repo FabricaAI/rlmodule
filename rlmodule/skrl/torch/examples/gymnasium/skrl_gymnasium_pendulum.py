@@ -183,8 +183,8 @@ device = env.device
 # instantiate a memory as rollout buffer (any memory can be used for this)
 memory = RandomMemory(memory_size=1024, num_envs=env.num_envs, device=device)
 
-models = get_shared_model(env)
-#models = get_separated_model(env)
+#models = get_shared_model(env)
+models = get_separated_model(env)
 
 print(models)
 
