@@ -10,6 +10,10 @@ This file tracks the upcoming features and tasks for the project.
   - [ ] Categorical
   - [ ] Multicategorical
 
+- [ ] **Network**
+  - [ ] CNN
+  - [ ] Example with custom model
+
 - [ ] **RL Model**
   - [ ] Take list of multiple output layers
 

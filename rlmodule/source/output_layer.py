@@ -2,6 +2,9 @@
 import torch
 import torch.nn as nn
 
+import gym
+import gymnasium
+
 from torch.distributions import Normal
 
 from rlmodule.source.utils import get_space_size
@@ -12,14 +15,20 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from rlmodule.source.output_layer_cfg import OutputLayerCfg, GaussianLayerCfg, DeterministicLayerCfg
 
-# TODO ABC?
 class OutputLayer(nn.Module):
-    # TODO does it need device?
     def __init__(self, device, input_size, cfg):
         super().__init__()
         self.device = device
+
+        self._clip_actions = cfg.clip_actions and (issubclass(type(cfg.output_size), gym.Space) or \
+            issubclass(type(cfg.output_size), gymnasium.Space))
+
+        if self._clip_actions:  
+            self._clip_actions_min = torch.tensor(cfg.output_size.low, device=self.device, dtype=torch.float32)
+            self._clip_actions_max = torch.tensor(cfg.output_size.high, device=self.device, dtype=torch.float32)
         
-        cfg.output_size = get_space_size(cfg.output_size)
+        self._input_size = input_size
+        self._output_size = get_space_size(cfg.output_size)
 
 
 class GaussianLayer(OutputLayer):
@@ -62,25 +71,11 @@ class GaussianLayer(OutputLayer):
         """
         super().__init__(device, input_size, cfg)
 
-        #### OLD
-        # self.mixin = GaussianMixin(cfg.clip_actions, cfg.clip_log_std, cfg.min_log_std, cfg.max_log_std, cfg.reduction)
-        
-        #### NEW
-
-        # TODO return this functionality
-        # self._clip_actions = clip_actions and (issubclass(type(self.action_space), gym.Space) or \
-        #     issubclass(type(self.action_space), gymnasium.Space))
-
-        # if self._clip_actions:
-        #     # TODO(ll) the code assume it will be inherited ... self.device is not set anywhere.  
-        #     self._clip_actions_min = torch.tensor(self.action_space.low, device=self.device, dtype=torch.float32)
-        #     self._clip_actions_max = torch.tensor(self.action_space.high, device=self.device, dtype=torch.float32)
-
         self._clip_log_std = cfg.clip_log_std
         self._log_std_min = cfg.min_log_std
         self._log_std_max = cfg.max_log_std
 
-        self._clamped_log_std = None # TODO rename and fix structure of log_std in forward
+        self._clamped_log_std = None
         self._num_samples = None
         self._distribution = None
 
@@ -89,31 +84,21 @@ class GaussianLayer(OutputLayer):
         self._reduction = torch.mean if cfg.reduction == "mean" else torch.sum if cfg.reduction == "sum" \
             else torch.prod if cfg.reduction == "prod" else None
 
-
-        #### END
-
         self._net = nn.Sequential(
-            nn.Linear(input_size,  cfg.output_size), 
+            nn.Linear(self._input_size,  self._output_size), 
             cfg.output_activation()
         )
 
         self._log_std_parameter = nn.Parameter(
-            cfg.initial_log_std * torch.ones( cfg.output_size )
+            cfg.initial_log_std * torch.ones( self._output_size )
         )
         
         
     def forward(self, input, taken_actions, outputs_dict):
 
-        # TODO(ll) passing by independetly as together sequential has just one input in forward
-        # potentially can be done that output dict would be propagated through mean net (mean net overload forward)
+        
         mean_actions = self._net(input)
         
-        #TODO
-        
-        #### OLD
-        # return self.mixin.forward(mean_actions, taken_actions, self._log_std, outputs_dict)
-        #                           mean_actions, taken_actions, log_std, outputs)
-        #### NEW
         log_std = self._log_std_parameter
         
         # clamp log standard deviations
@@ -128,13 +113,12 @@ class GaussianLayer(OutputLayer):
         # distribution
         self._distribution = Normal(mean_actions, self._clamped_log_std.exp())
 
-        # sample using the reparameterization trick
+        # sample using the reparametrization trick
         actions = self._distribution.rsample()
 
         # clip actions
-        # TODO enable
-        # if self._clip_actions:
-        #     actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
+        if self._clip_actions:
+            actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
         
         if taken_actions is None:
             taken_actions = actions
@@ -162,7 +146,7 @@ class GaussianLayer(OutputLayer):
 
         # TODO(ll) output scale removed .. check that tanh where is
         # return output * self.instantiator_output_scale, self._log_std, {}
-        return output, self._log_std, output_dict
+        # return output, self._log_std, output_dict
 
     def get_entropy(self, role: str = "") -> torch.Tensor:
         """Compute and return the entropy of the model
@@ -254,17 +238,6 @@ class DeterministicLayer(OutputLayer):
         """
 
         super().__init__(device, input_size, cfg)
-        #self.mixin = DeterministicMixin(cfg.clip_actions)
-
-        #### NEW
-        # TODO can be done in common class OutputLayer
-        # self._clip_actions = clip_actions and (issubclass(type(self.action_space), gym.Space) or \
-        #     issubclass(type(self.action_space), gymnasium.Space))
-
-        # if self._clip_actions:
-        #     self._clip_actions_min = torch.tensor(self.action_space.low, device=self.device, dtype=torch.float32)
-        #     self._clip_actions_max = torch.tensor(self.action_space.high, device=self.device, dtype=torch.float32)
-        ####
 
         self._net = nn.Sequential(
             nn.Linear(input_size, cfg.output_size), 
@@ -275,7 +248,7 @@ class DeterministicLayer(OutputLayer):
 
         actions = self._net(input)
 
-        # clip actions # TODO enable
-        # if self._clip_actions:
-        #     actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
+        if self._clip_actions:
+            actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
+        
         return actions, None, outputs_dict

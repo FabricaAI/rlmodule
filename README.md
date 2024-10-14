@@ -6,7 +6,7 @@ Flexible reinforcement learning models instantiators library
 
 ### Install rlmodule from local code
 
-- Make sure you are in base rlmodule dit.
+- Make sure you are in base rlmodule dict.
 
 - Start virtual env.
 ```
