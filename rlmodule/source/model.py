@@ -36,6 +36,19 @@ class Model(torch.nn.Module):
 
         self._random_distribution = None
 
+    @property
+    def is_rnn(self):
+        """Return true if there is a submodule with RNN architecture
+        
+        Submodules for which it will return true: nn.RNN, nn.GRU, nn.LSTM
+        """
+        return self._rnn
+
+    @property
+    def is_lstm(self):
+        """Return true if there is an LSTM submodule"""
+        return self._lstm
+
     def get_entropy(self, role: str = "") -> torch.Tensor:
         """Compute and return the entropy of the model
 
