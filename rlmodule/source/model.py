@@ -287,30 +287,6 @@ class Model(torch.nn.Module):
 
         _update_biases(self.children(), method_name, args, kwargs)
 
-    def get_specification(self) -> Mapping[str, Any]:
-        """Returns the specification of the model
-
-        The following keys are used by the agents for initialization:
-
-        - ``"rnn"``: Recurrent Neural Network (RNN) specification for RNN, LSTM and GRU layers/cells
-
-          - ``"sizes"``: List of RNN shapes (number of layers, number of environments, number of features in the RNN state).
-            There must be as many tuples as there are states in the recurrent layer/cell. E.g., LSTM has 2 states (hidden and cell).
-
-        :return: Dictionary containing advanced specification of the model
-        :rtype: dict
-
-        Example::
-
-            # model with a LSTM layer.
-            # - number of layers: 1
-            # - number of environments: 4
-            # - number of features in the RNN state: 64
-            >>> model.get_specification()
-            {'rnn': {'sizes': [(1, 4, 64), (1, 4, 64)]}}
-        """
-        return {}
-
     def forward(self,
                 inputs: Mapping[str, Union[torch.Tensor, Any]],
                 role: str = "") -> Tuple[torch.Tensor, Union[torch.Tensor, None], Mapping[str, Union[torch.Tensor, Any]]]:
@@ -331,27 +307,7 @@ class Model(torch.nn.Module):
                  or None for deterministic models. The third component is a dictionary containing extra output values
         :rtype: tuple of torch.Tensor, torch.Tensor or None, and dict
         """
-        return self.act(inputs, role)
-
-    def compute(self,
-                inputs: Mapping[str, Union[torch.Tensor, Any]],
-                role: str = "") -> Tuple[Union[torch.Tensor, Mapping[str, Union[torch.Tensor, Any]]]]:
-        """Define the computation performed (to be implemented by the inheriting classes) by the models
-
-        :param inputs: Model inputs. The most common keys are:
-
-                       - ``"states"``: state of the environment used to make the decision
-                       - ``"taken_actions"``: actions taken by the policy for the given states
-        :type inputs: dict where the values are typically torch.Tensor
-        :param role: Role play by the model (default: ``""``)
-        :type role: str, optional
-
-        :raises NotImplementedError: Child class must implement this method
-
-        :return: Computation performed by the models
-        :rtype: tuple of torch.Tensor and dict
-        """
-        raise NotImplementedError("The computation performed by the models (.compute()) is not implemented")
+        raise NotImplementedError("The action to be taken by the agent (.forward()) is not implemented")
 
     def act(self,
             inputs: Mapping[str, Union[torch.Tensor, Any]],
@@ -377,8 +333,8 @@ class Model(torch.nn.Module):
                  or None for deterministic models. The third component is a dictionary containing extra output values
         :rtype: tuple of torch.Tensor, torch.Tensor or None, and dict
         """
-        logger.warning("Make sure to place Mixins before Model during model definition")
-        raise NotImplementedError("The action to be taken by the agent (.act()) is not implemented")
+        
+        return self.forward(inputs, role)
 
     def set_mode(self, mode: str) -> None:
         """Set the model mode (training or evaluation)
@@ -444,7 +400,7 @@ class Model(torch.nn.Module):
                 name_map: Mapping[str, str] = {},
                 auto_mapping: bool = True,
                 verbose: bool = False) -> bool:
-        """Migrate the specified extrernal model's state dict to the current model
+        """Migrate the specified external model's state dict to the current model
 
         The final storage device is determined by the constructor of the model
 

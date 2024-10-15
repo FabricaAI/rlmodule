@@ -19,7 +19,7 @@ class RLModel(Model):
         self._output_layer = output_layer
         self._policy_output_layer = self._output_layer
         
-    def act(self,
+    def forward(self,
             inputs: Mapping[str, Union[torch.Tensor, Any]],
             role: str = "") -> Tuple[torch.Tensor, Union[torch.Tensor, None], Mapping[str, Union[torch.Tensor, Any]]]:
         
@@ -60,7 +60,7 @@ class SharedRLModel(Model):
                and torch.equal(self._cached_states, states)      
         )
         
-    def act(self,
+    def forward(self,
             inputs: Mapping[str, Union[torch.Tensor, Any]],
             role: str = "") -> Tuple[torch.Tensor, Union[torch.Tensor, None], Mapping[str, Union[torch.Tensor, Any]]]:
         
