@@ -7,12 +7,13 @@ from collections.abc import Callable
 from typing import List, Sequence, Union
 
 from rlmodule.source.network import GRU, LSTM, MLP, RNN, RnnBase, RnnMlp
+from rlmodule import logger
 
 # use isaac-lab native configclass if available to avoid it being declared twice
 try:
     from omni.isaac.lab.utils import configclass
 except ImportError:
-    print("Importing local configclass.")
+    logger.info("Importing local configclass.")
     from rlmodule.source.nvidia_utils import configclass
 
 @configclass
