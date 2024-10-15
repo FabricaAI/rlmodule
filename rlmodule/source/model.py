@@ -7,8 +7,6 @@ import gymnasium
 import torch
 import torch.nn as nn
 
-# TODO do not depend on skrl, also remove skrl from pyproject.toml
-from skrl import config
 from rlmodule import logger
 
 def contains_rnn_module(module: nn.Module, module_types):
@@ -165,39 +163,6 @@ class Model(torch.nn.Module):
                 return output
         raise ValueError(f"Space type {type(space)} not supported")
 
-    # No need to suport?
-    # def random_act(self,
-    #                inputs: Mapping[str, Union[torch.Tensor, Any]],
-    #                role: str = "") -> Tuple[torch.Tensor, None, Mapping[str, Union[torch.Tensor, Any]]]:
-    #     """Act randomly according to the action space
-
-    #     :param inputs: Model inputs. The most common keys are:
-
-    #                    - ``"states"``: state of the environment used to make the decision
-    #                    - ``"taken_actions"``: actions taken by the policy for the given states
-    #     :type inputs: dict where the values are typically torch.Tensor
-    #     :param role: Role play by the model (default: ``""``)
-    #     :type role: str, optional
-
-    #     :raises NotImplementedError: Unsupported action space
-
-    #     :return: Model output. The first component is the action to be taken by the agent
-    #     :rtype: tuple of torch.Tensor, None, and dict
-    #     """
-    #     # discrete action space (Discrete)
-    #     if issubclass(type(self.action_space), gym.spaces.Discrete) or issubclass(type(self.action_space), gymnasium.spaces.Discrete):
-    #         return torch.randint(self.action_space.n, (inputs["states"].shape[0], 1), device=self.device), None, {}
-    #     # continuous action space (Box)
-    #     elif issubclass(type(self.action_space), gym.spaces.Box) or issubclass(type(self.action_space), gymnasium.spaces.Box):
-    #         if self._random_distribution is None:
-    #             self._random_distribution = torch.distributions.uniform.Uniform(
-    #                 low=torch.tensor(self.action_space.low[0], device=self.device, dtype=torch.float32),
-    #                 high=torch.tensor(self.action_space.high[0], device=self.device, dtype=torch.float32))
-
-    #         return self._random_distribution.sample(sample_shape=(inputs["states"].shape[0], self.num_actions)), None, {}
-    #     else:
-    #         raise NotImplementedError(f"Action space type ({type(self.action_space)}) not supported")
-
     def init_parameters(self, method_name: str = "normal_", *args, **kwargs) -> None:
         """Initialize the model parameters according to the specified method name
 
@@ -293,7 +258,7 @@ class Model(torch.nn.Module):
                 role: str = "") -> Tuple[torch.Tensor, Union[torch.Tensor, None], Mapping[str, Union[torch.Tensor, Any]]]:
         """Forward pass of the model
 
-        This method calls the ``.act()`` method and returns its outputs
+        Implementation of this method manages calling forward passes of all its components.
 
         :param inputs: Model inputs. The most common keys are:
 
@@ -313,11 +278,7 @@ class Model(torch.nn.Module):
     def act(self,
             inputs: Mapping[str, Union[torch.Tensor, Any]],
             role: str = "") -> Tuple[torch.Tensor, Union[torch.Tensor, None], Mapping[str, Union[torch.Tensor, Any]]]:
-        """Act according to the specified behavior (to be implemented by the inheriting classes)
-
-        Agents will call this method to obtain the decision to be taken given the state of the environment.
-        This method is currently implemented by the helper models (**GaussianModel**, etc.).
-        The classes that inherit from the latter must only implement the ``.compute()`` method
+        """This method calls the ``.forward()`` method and returns its outputs
 
         :param inputs: Model inputs. The most common keys are:
 
@@ -327,14 +288,11 @@ class Model(torch.nn.Module):
         :param role: Role play by the model (default: ``""``)
         :type role: str, optional
 
-        :raises NotImplementedError: Child class must implement this method
-
         :return: Model output. The first component is the action to be taken by the agent.
                  The second component is the log of the probability density function for stochastic models
                  or None for deterministic models. The third component is a dictionary containing extra output values
         :rtype: tuple of torch.Tensor, torch.Tensor or None, and dict
         """
-        
         return self.forward(inputs, role)
 
     def set_mode(self, mode: str) -> None:
@@ -439,13 +397,13 @@ class Model(torch.nn.Module):
 
             # migrate a rl_games checkpoint with ambiguous state_dict
             >>> model.migrate(path="./runs/Cartpole/nn/Cartpole.pth", verbose=False)
-            [skrl:WARNING] Ambiguous match for log_std_parameter <- [value_mean_std.running_mean, value_mean_std.running_var, a2c_network.sigma]
-            [skrl:WARNING] Ambiguous match for net.0.bias <- [a2c_network.actor_mlp.0.bias, a2c_network.actor_mlp.2.bias]
-            [skrl:WARNING] Ambiguous match for net.2.bias <- [a2c_network.actor_mlp.0.bias, a2c_network.actor_mlp.2.bias]
-            [skrl:WARNING] Ambiguous match for net.4.weight <- [a2c_network.value.weight, a2c_network.mu.weight]
-            [skrl:WARNING] Ambiguous match for net.4.bias <- [a2c_network.value.bias, a2c_network.mu.bias]
-            [skrl:WARNING] Multiple use of a2c_network.actor_mlp.0.bias -> [net.0.bias, net.2.bias]
-            [skrl:WARNING] Multiple use of a2c_network.actor_mlp.2.bias -> [net.0.bias, net.2.bias]
+            [rlmodule:WARNING] Ambiguous match for log_std_parameter <- [value_mean_std.running_mean, value_mean_std.running_var, a2c_network.sigma]
+            [rlmodule:WARNING] Ambiguous match for net.0.bias <- [a2c_network.actor_mlp.0.bias, a2c_network.actor_mlp.2.bias]
+            [rlmodule:WARNING] Ambiguous match for net.2.bias <- [a2c_network.actor_mlp.0.bias, a2c_network.actor_mlp.2.bias]
+            [rlmodule:WARNING] Ambiguous match for net.4.weight <- [a2c_network.value.weight, a2c_network.mu.weight]
+            [rlmodule:WARNING] Ambiguous match for net.4.bias <- [a2c_network.value.bias, a2c_network.mu.bias]
+            [rlmodule:WARNING] Multiple use of a2c_network.actor_mlp.0.bias -> [net.0.bias, net.2.bias]
+            [rlmodule:WARNING] Multiple use of a2c_network.actor_mlp.2.bias -> [net.0.bias, net.2.bias]
             False
             >>> name_map = {"log_std_parameter": "a2c_network.sigma",
             ...             "net.0.bias": "a2c_network.actor_mlp.0.bias",
@@ -453,39 +411,39 @@ class Model(torch.nn.Module):
             ...             "net.4.weight": "a2c_network.mu.weight",
             ...             "net.4.bias": "a2c_network.mu.bias"}
             >>> model.migrate(path="./runs/Cartpole/nn/Cartpole.pth", name_map=name_map, verbose=True)
-            [skrl:INFO] Models
-            [skrl:INFO]   |-- current: 7 items
-            [skrl:INFO]   |    |-- log_std_parameter : torch.Size([1])
-            [skrl:INFO]   |    |-- net.0.weight : torch.Size([32, 4])
-            [skrl:INFO]   |    |-- net.0.bias : torch.Size([32])
-            [skrl:INFO]   |    |-- net.2.weight : torch.Size([32, 32])
-            [skrl:INFO]   |    |-- net.2.bias : torch.Size([32])
-            [skrl:INFO]   |    |-- net.4.weight : torch.Size([1, 32])
-            [skrl:INFO]   |    |-- net.4.bias : torch.Size([1])
-            [skrl:INFO]   |-- source: 15 items
-            [skrl:INFO]   |    |-- value_mean_std.running_mean : torch.Size([1])
-            [skrl:INFO]   |    |-- value_mean_std.running_var : torch.Size([1])
-            [skrl:INFO]   |    |-- value_mean_std.count : torch.Size([])
-            [skrl:INFO]   |    |-- running_mean_std.running_mean : torch.Size([4])
-            [skrl:INFO]   |    |-- running_mean_std.running_var : torch.Size([4])
-            [skrl:INFO]   |    |-- running_mean_std.count : torch.Size([])
-            [skrl:INFO]   |    |-- a2c_network.sigma : torch.Size([1])
-            [skrl:INFO]   |    |-- a2c_network.actor_mlp.0.weight : torch.Size([32, 4])
-            [skrl:INFO]   |    |-- a2c_network.actor_mlp.0.bias : torch.Size([32])
-            [skrl:INFO]   |    |-- a2c_network.actor_mlp.2.weight : torch.Size([32, 32])
-            [skrl:INFO]   |    |-- a2c_network.actor_mlp.2.bias : torch.Size([32])
-            [skrl:INFO]   |    |-- a2c_network.value.weight : torch.Size([1, 32])
-            [skrl:INFO]   |    |-- a2c_network.value.bias : torch.Size([1])
-            [skrl:INFO]   |    |-- a2c_network.mu.weight : torch.Size([1, 32])
-            [skrl:INFO]   |    |-- a2c_network.mu.bias : torch.Size([1])
-            [skrl:INFO] Migration
-            [skrl:INFO]   |-- map:  log_std_parameter <- a2c_network.sigma
-            [skrl:INFO]   |-- auto: net.0.weight <- a2c_network.actor_mlp.0.weight
-            [skrl:INFO]   |-- map:  net.0.bias <- a2c_network.actor_mlp.0.bias
-            [skrl:INFO]   |-- auto: net.2.weight <- a2c_network.actor_mlp.2.weight
-            [skrl:INFO]   |-- map:  net.2.bias <- a2c_network.actor_mlp.2.bias
-            [skrl:INFO]   |-- map:  net.4.weight <- a2c_network.mu.weight
-            [skrl:INFO]   |-- map:  net.4.bias <- a2c_network.mu.bias
+            [rlmodule:INFO] Models
+            [rlmodule:INFO]   |-- current: 7 items
+            [rlmodule:INFO]   |    |-- log_std_parameter : torch.Size([1])
+            [rlmodule:INFO]   |    |-- net.0.weight : torch.Size([32, 4])
+            [rlmodule:INFO]   |    |-- net.0.bias : torch.Size([32])
+            [rlmodule:INFO]   |    |-- net.2.weight : torch.Size([32, 32])
+            [rlmodule:INFO]   |    |-- net.2.bias : torch.Size([32])
+            [rlmodule:INFO]   |    |-- net.4.weight : torch.Size([1, 32])
+            [rlmodule:INFO]   |    |-- net.4.bias : torch.Size([1])
+            [rlmodule:INFO]   |-- source: 15 items
+            [rlmodule:INFO]   |    |-- value_mean_std.running_mean : torch.Size([1])
+            [rlmodule:INFO]   |    |-- value_mean_std.running_var : torch.Size([1])
+            [rlmodule:INFO]   |    |-- value_mean_std.count : torch.Size([])
+            [rlmodule:INFO]   |    |-- running_mean_std.running_mean : torch.Size([4])
+            [rlmodule:INFO]   |    |-- running_mean_std.running_var : torch.Size([4])
+            [rlmodule:INFO]   |    |-- running_mean_std.count : torch.Size([])
+            [rlmodule:INFO]   |    |-- a2c_network.sigma : torch.Size([1])
+            [rlmodule:INFO]   |    |-- a2c_network.actor_mlp.0.weight : torch.Size([32, 4])
+            [rlmodule:INFO]   |    |-- a2c_network.actor_mlp.0.bias : torch.Size([32])
+            [rlmodule:INFO]   |    |-- a2c_network.actor_mlp.2.weight : torch.Size([32, 32])
+            [rlmodule:INFO]   |    |-- a2c_network.actor_mlp.2.bias : torch.Size([32])
+            [rlmodule:INFO]   |    |-- a2c_network.value.weight : torch.Size([1, 32])
+            [rlmodule:INFO]   |    |-- a2c_network.value.bias : torch.Size([1])
+            [rlmodule:INFO]   |    |-- a2c_network.mu.weight : torch.Size([1, 32])
+            [rlmodule:INFO]   |    |-- a2c_network.mu.bias : torch.Size([1])
+            [rlmodule:INFO] Migration
+            [rlmodule:INFO]   |-- map:  log_std_parameter <- a2c_network.sigma
+            [rlmodule:INFO]   |-- auto: net.0.weight <- a2c_network.actor_mlp.0.weight
+            [rlmodule:INFO]   |-- map:  net.0.bias <- a2c_network.actor_mlp.0.bias
+            [rlmodule:INFO]   |-- auto: net.2.weight <- a2c_network.actor_mlp.2.weight
+            [rlmodule:INFO]   |-- map:  net.2.bias <- a2c_network.actor_mlp.2.bias
+            [rlmodule:INFO]   |-- map:  net.4.weight <- a2c_network.mu.weight
+            [rlmodule:INFO]   |-- map:  net.4.bias <- a2c_network.mu.bias
             False
 
             # migrate a stable-baselines3 checkpoint with unambiguous state_dict
@@ -647,48 +605,3 @@ class Model(torch.nn.Module):
                 for parameters, model_parameters in zip(self.parameters(), model.parameters()):
                     parameters.data.mul_(1 - polyak)
                     parameters.data.add_(polyak * model_parameters.data)
-
-    def broadcast_parameters(self, rank: int = 0):
-        """Broadcast model parameters to the whole group (e.g.: across all nodes) in distributed runs
-
-        After calling this method, the distributed model will contain the broadcasted parameters from ``rank``
-
-        :param rank: Worker/process rank from which to broadcast model parameters (default: ``0``)
-        :type rank: int
-
-        Example::
-
-            # broadcast model parameter from worker/process with rank 1
-            >>> if config.torch.is_distributed:
-            ...     model.update_parameters(source_model, rank=1)
-        """
-        object_list = [self.state_dict()]
-        torch.distributed.broadcast_object_list(object_list, rank)
-        self.load_state_dict(object_list[0])
-
-    def reduce_parameters(self):
-        """Reduce model parameters across all workers/processes in the whole group (e.g.: across all nodes)
-
-        After calling this method, the distributed model parameters will be bitwise identical for all workers/processes
-
-        Example::
-
-            # reduce model parameter across all workers/processes
-            >>> if config.torch.is_distributed:
-            ...     model.reduce_parameters()
-        """
-        # batch all_reduce ops: https://github.com/entity-neural-network/incubator/pull/220
-        gradients = []
-        for parameters in self.parameters():
-            if parameters.grad is not None:
-                gradients.append(parameters.grad.view(-1))
-        gradients = torch.cat(gradients)
-
-        torch.distributed.all_reduce(gradients, op=torch.distributed.ReduceOp.SUM)
-
-        offset = 0
-        for parameters in self.parameters():
-            if parameters.grad is not None:
-                parameters.grad.data.copy_(gradients[offset:offset + parameters.numel()] \
-                                           .view_as(parameters.grad.data) / config.torch.world_size)
-                offset += parameters.numel()
