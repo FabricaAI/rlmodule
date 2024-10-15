@@ -8,7 +8,8 @@ import torch
 import torch.nn as nn
 
 # TODO do not depend on skrl, also remove skrl from pyproject.toml
-from skrl import config, logger
+from skrl import config
+from rlmodule import logger
 
 def contains_rnn_module(module: nn.Module, module_types):
     for submodule in module.modules():
@@ -32,8 +33,8 @@ class Model(torch.nn.Module):
         self._lstm = contains_rnn_module( self, nn.LSTM)
         self._rnn = contains_rnn_module( self, (nn.LSTM, nn.RNN, nn.GRU))
         
-        print("is rnn: ", self._rnn)
-        print("is lstm: ", self._lstm)
+        logger.info(f"model contains rnn:  {self._rnn}")
+        logger.info(f"model contains lstm: {self._lstm}")
 
         self._random_distribution = None
 
