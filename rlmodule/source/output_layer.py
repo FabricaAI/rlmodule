@@ -31,7 +31,7 @@ class OutputLayer(nn.Module):
         self._input_size = input_size
         self._output_size = get_space_size(cfg.output_size)
 
-
+# TODO(TM): Add Std modularization
 class GaussianLayer(OutputLayer):
     def __init__(self, device: Union[str, torch.device], input_size: int, cfg):
         """Gaussian output layer
