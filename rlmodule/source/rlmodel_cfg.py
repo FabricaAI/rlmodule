@@ -28,13 +28,18 @@ class RLModelCfg(BaseRLCfg):
 
 @configclass
 class SharedRLModelCfg(BaseRLCfg):
+    """Model where policy and value are sharing the function approximator. Only differ in outpur layer.
+       This can be used for PPO, A2C, RPO, TRPO algorithms.
+    """
     class_type: type[SharedRLModel] = SharedRLModel
     policy_output_layer: OutputLayerCfg = MISSING
     value_output_layer: OutputLayerCfg = MISSING
 
-
 @configclass
 class SeparatedRLModelCfg:
-    """Convenience class to hold two separate instances of RLModelCfg. One for policy and one for value model."""
+    """Convenience class to hold two separate instances of RLModelCfg. One for policy and one for value (or critic)   This can be used for PPO, A2C, RPO, TRPO algorithms.
+    """
     policy: RLModelCfg = MISSING
+    """Hold configuration of policy model"""
     value: RLModelCfg = MISSING
+    """Hold configuration of value (or critic) model"""

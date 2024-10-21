@@ -15,10 +15,8 @@ from skrl.resources.schedulers.torch import KLAdaptiveRL
 from skrl.trainers.torch import SequentialTrainer
 from skrl.utils import set_seed
 
-
 # seed for reproducibility
 set_seed()  # e.g. `set_seed(42)` for fixed seed
-
 
 # define models (stochastic and deterministic models) using mixins
 class Policy(GaussianMixin, Model):

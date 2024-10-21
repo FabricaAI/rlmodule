@@ -2,6 +2,25 @@
 Flexible reinforcement learning models instantiators library
 
 
+Now it only supports skrl, but is intended to be library agnostic - in later expansion
+
+try other algos
+shared separate model
+
+
+<!-- 
+# todo
+# cnn
+# WRITE README tutorial
+# Run & fix pre-commit
+# annotate cfgs in modules - why doesn't work
+# extensive comments
+# Launch new version to pip
+# Import new version in Isaac-lab
+# lazy linear? what is it ?  
+-->
+
+
 ## How to run
 
 ### Install rlmodule from local code

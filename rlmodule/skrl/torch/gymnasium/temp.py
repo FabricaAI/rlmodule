@@ -2,6 +2,8 @@ import gymnasium as gym
 
 import torch.nn as nn
 
+import os
+
 from rlmodule.skrl.torch import build_model, SharedRLModelCfg, RLModelCfg, SeparatedRLModelCfg
 from rlmodule.skrl.torch.network import MlpCfg, RnnMlpCfg, LstmCfg  
 from rlmodule.skrl.torch.output_layer import DeterministicLayerCfg, GaussianLayerCfg
@@ -11,7 +13,6 @@ from rlmodule.skrl.torch.output_layer import DeterministicLayerCfg, GaussianLaye
 from skrl.agents.torch.ppo import PPO, PPO_RNN, PPO_DEFAULT_CONFIG
 
 from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
-#from skrl.envs.wrappers.torch import wrap_env
 from skrl.memories.torch import RandomMemory
 from skrl.resources.preprocessors.torch import RunningStandardScaler
 from skrl.resources.schedulers.torch import KLAdaptiveRL
@@ -19,32 +20,9 @@ from skrl.trainers.torch import SequentialTrainer
 from skrl.utils import set_seed
 from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
 
-# todo set seed
-# seed for reproducibility
+# set seed for reproducibility
 seed = 42
-set_seed(seed)  # e.g. `set_seed(42)` for fixed seed
-
-#TODO next
-# (Done) check how to do own @configclass .. or use one from isaac by default (print something to know version)
-# (Done) RNN code modify to use data class
-# (Done) RnnMLP
-# (Done) Custom function Network
-# (Done) Move things logically
-# (Done) Handle input shapes better?
-# (Done except Cnn) Convert all rest modules to use Configclass
-# (Done) Rearrange library in the way it can be used for other rllibs and for torch/jax?
-# Create examples - mlp, rnn,gru,lstm, Lstmmlp, shared - separate , custom net by fcion
-#                 - examples from modules make in class header not function 
-# WRITE README tutorial
-# Run & fix pre-commit
-# annotate cfgs in modules - why doesn't work
-# extensive comments
-# Launch new version to pip
-# Import new version in Isaac-lab
-# Change structure of source
-# lazy linear? what is it ?
-
- 
+set_seed(seed)
 
 # def example_module(cfg):
 #     cfg = RnnMlpCfg(
@@ -215,22 +193,21 @@ cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 cfg["experiment"]["write_interval"] = 500
 cfg["experiment"]["checkpoint_interval"] = 5000
 cfg["experiment"]["directory"] = "runs/torch/Pendulum"
+cfg["experiment"]["experiment_name"] = os.path.splitext(os.path.basename(__file__))[0]
 
-# TODO(nicer)
-if models['policy']._rnn:
-    agent = PPO_RNN(models=models,
-                memory=memory,
-                cfg=cfg,
-                observation_space=env.observation_space,
-                action_space=env.action_space,
-                device=device)
+params = {
+    'models': models,
+    'memory': memory,
+    'cfg': cfg,
+    'observation_space': env.observation_space,
+    'action_space': env.action_space,
+    'device': device
+}
+
+if models['policy'].is_rnn:
+    agent = PPO_RNN(**params)
 else:
-    agent = PPO(models=models,
-                memory=memory,
-                cfg=cfg,
-                observation_space=env.observation_space,
-                action_space=env.action_space,
-                device=device)
+    agent = PPO(**params)
 
 # configure and instantiate the RL trainer
 cfg_trainer = {"timesteps": 100000, "headless": True}
