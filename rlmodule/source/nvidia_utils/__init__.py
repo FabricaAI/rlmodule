@@ -1,1 +1,1 @@
-from .configclass import configclass
+from .configclass import configclass  # noqa: F401

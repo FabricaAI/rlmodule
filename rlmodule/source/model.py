@@ -1,4 +1,4 @@
-from typing import Any, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Mapping, Optional, Tuple, Union
 
 import collections
 import gym
@@ -8,29 +8,23 @@ import torch
 import torch.nn as nn
 
 from rlmodule import logger
-
-def contains_rnn_module(module: nn.Module, module_types):
-    for submodule in module.modules():
-        if isinstance(submodule, module_types):
-            return True
-    return False
+from rlmodule.source.utils import contains_rnn_module
 
 
 class Model(torch.nn.Module):
-    def __init__(self,
-                 device: Union[str, torch.device],
-                 network: nn.Module) -> None:
-        """Base class representing a function approximator
-        """
+    def __init__(self, device: Union[str, torch.device], network: nn.Module) -> None:
+        """Base class representing a function approximator"""
         super().__init__()
 
         # TODO check if this is done outside. also it is not optional rn.
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") if device is None else torch.device(device)
+        self.device = (
+            torch.device("cuda:0" if torch.cuda.is_available() else "cpu") if device is None else torch.device(device)
+        )
         self._net = network
 
-        self._lstm = contains_rnn_module( self, nn.LSTM)
-        self._rnn = contains_rnn_module( self, (nn.LSTM, nn.RNN, nn.GRU))
-        
+        self._lstm = contains_rnn_module(self, nn.LSTM)
+        self._rnn = contains_rnn_module(self, (nn.LSTM, nn.RNN, nn.GRU))
+
         logger.info(f"model contains rnn:  {self._rnn}")
         logger.info(f"model contains lstm: {self._lstm}")
 
@@ -39,7 +33,7 @@ class Model(torch.nn.Module):
     @property
     def is_rnn(self):
         """Return true if there is a submodule with RNN architecture
-        
+
         Submodules for which it will return true: nn.RNN, nn.GRU, nn.LSTM
         """
         return self._rnn
@@ -64,7 +58,7 @@ class Model(torch.nn.Module):
             torch.Size([4096, 8])
         """
         return self._policy_output_layer.get_entropy(role)
-    
+
     def distribution(self, role: str = "") -> torch.distributions.Normal:
         """Get the current distribution of the model
 
@@ -88,8 +82,10 @@ class Model(torch.nn.Module):
 
         - ``"rnn"``: Recurrent Neural Network (RNN) specification for RNN, LSTM and GRU layers/cells
 
-          - ``"sizes"``: List of RNN shapes (number of layers, number of environments, number of features in the RNN state).
-            There must be as many tuples as there are states in the recurrent layer/cell. E.g., LSTM has 2 states (hidden and cell).
+          - ``"sizes"``: List of RNN shapes (number of layers, number of environments,
+            number of features in the RNN state).
+            There must be as many tuples as there are states in the recurrent layer/cell.
+            E.g., LSTM has 2 states (hidden and cell).
 
         :return: Dictionary containing advanced specification of the model
         :rtype: dict
@@ -102,22 +98,34 @@ class Model(torch.nn.Module):
             # - number of features in the RNN state: 64
             >>> model.get_specification()
             {'rnn': {'sizes': [(1, 4, 64), (1, 4, 64)]}}
-        """   
+        """
         if self._lstm:
-            return {"rnn": {"sequence_length": self._net.sequence_length,
-                            "sizes": [(self._net.num_layers, self._net.num_envs, self._net.hidden_size),    # hidden states (D ∗ num_layers, N, Hout)
-                                      (self._net.num_layers, self._net.num_envs, self._net.hidden_size)]}}  # cell states   (D ∗ num_layers, N, Hcell)
+            return {
+                "rnn": {
+                    "sequence_length": self._net.sequence_length,
+                    "sizes": [
+                        (
+                            self._net.num_layers,
+                            self._net.num_envs,
+                            self._net.hidden_size,
+                        ),  # hidden states (D ∗ num_layers, N, Hout)
+                        (self._net.num_layers, self._net.num_envs, self._net.hidden_size),
+                    ],
+                }
+            }  # cell states   (D ∗ num_layers, N, Hcell)
         elif self._rnn:
-            return {"rnn": {"sequence_length": self._net.sequence_length,
-                            "sizes": [(self._net.num_layers, self._net.num_envs, self._net.hidden_size)]}}    # hidden states (D ∗ num_layers, N, Hout)
+            return {
+                "rnn": {
+                    "sequence_length": self._net.sequence_length,
+                    "sizes": [(self._net.num_layers, self._net.num_envs, self._net.hidden_size)],
+                }
+            }  # hidden states (D ∗ num_layers, N, Hout)
         else:
             return {}
-    
-    
-    def tensor_to_space(self,
-                        tensor: torch.Tensor,
-                        space: Union[gym.Space, gymnasium.Space],
-                        start: int = 0) -> Union[torch.Tensor, dict]:
+
+    def tensor_to_space(
+        self, tensor: torch.Tensor, space: Union[gym.Space, gymnasium.Space], start: int = 0
+    ) -> Union[torch.Tensor, dict]:
         """Map a flat tensor to a Gym/Gymnasium space
 
         The mapping is done in the following way:
@@ -182,7 +190,8 @@ class Model(torch.nn.Module):
         Method names are from the `torch.nn.init <https://pytorch.org/docs/stable/nn.init.html>`_ module.
         Allowed method names are *uniform_*, *normal_*, *constant_*, etc.
 
-        :param method_name: `torch.nn.init <https://pytorch.org/docs/stable/nn.init.html>`_ method name (default: ``"normal_"``)
+        :param method_name: `torch.nn.init <https://pytorch.org/docs/stable/nn.init.html>`_ method name
+            (default: ``"normal_"``)
         :type method_name: str, optional
         :param args: Positional arguments of the method to be called
         :type args: tuple, optional
@@ -209,7 +218,8 @@ class Model(torch.nn.Module):
         The following layers will be initialized:
         - torch.nn.Linear
 
-        :param method_name: `torch.nn.init <https://pytorch.org/docs/stable/nn.init.html>`_ method name (default: ``"orthogonal_"``)
+        :param method_name: `torch.nn.init <https://pytorch.org/docs/stable/nn.init.html>`_ method name
+            (default: ``"orthogonal_"``)
         :type method_name: str, optional
         :param args: Positional arguments of the method to be called
         :type args: tuple, optional
@@ -224,6 +234,7 @@ class Model(torch.nn.Module):
             # initialize all weights with normal distribution with mean 0 and standard deviation 0.25
             >>> model.init_weights(method_name="normal_", mean=0.0, std=0.25)
         """
+
         def _update_weights(module, method_name, args, kwargs):
             for layer in module:
                 if isinstance(layer, torch.nn.Sequential):
@@ -242,7 +253,8 @@ class Model(torch.nn.Module):
         The following layers will be initialized:
         - torch.nn.Linear
 
-        :param method_name: `torch.nn.init <https://pytorch.org/docs/stable/nn.init.html>`_ method name (default: ``"constant_"``)
+        :param method_name: `torch.nn.init <https://pytorch.org/docs/stable/nn.init.html>`_
+            method name (default: ``"constant_"``)
         :type method_name: str, optional
         :param args: Positional arguments of the method to be called
         :type args: tuple, optional
@@ -257,6 +269,7 @@ class Model(torch.nn.Module):
             # initialize all biases with normal distribution with mean 0 and standard deviation 0.25
             >>> model.init_biases(method_name="normal_", mean=0.0, std=0.25)
         """
+
         def _update_biases(module, method_name, args, kwargs):
             for layer in module:
                 if isinstance(layer, torch.nn.Sequential):
@@ -266,9 +279,9 @@ class Model(torch.nn.Module):
 
         _update_biases(self.children(), method_name, args, kwargs)
 
-    def forward(self,
-                inputs: Mapping[str, Union[torch.Tensor, Any]],
-                role: str = "") -> Tuple[torch.Tensor, Union[torch.Tensor, None], Mapping[str, Union[torch.Tensor, Any]]]:
+    def forward(
+        self, inputs: Mapping[str, Union[torch.Tensor, Any]], role: str = ""
+    ) -> Tuple[torch.Tensor, Union[torch.Tensor, None], Mapping[str, Union[torch.Tensor, Any]]]:
         """Forward pass of the model
 
         Implementation of this method manages calling forward passes of all its components.
@@ -288,9 +301,9 @@ class Model(torch.nn.Module):
         """
         raise NotImplementedError("The action to be taken by the agent (.forward()) is not implemented")
 
-    def act(self,
-            inputs: Mapping[str, Union[torch.Tensor, Any]],
-            role: str = "") -> Tuple[torch.Tensor, Union[torch.Tensor, None], Mapping[str, Union[torch.Tensor, Any]]]:
+    def act(
+        self, inputs: Mapping[str, Union[torch.Tensor, Any]], role: str = ""
+    ) -> Tuple[torch.Tensor, Union[torch.Tensor, None], Mapping[str, Union[torch.Tensor, Any]]]:
         """This method calls the ``.forward()`` method and returns its outputs
 
         :param inputs: Model inputs. The most common keys are:
@@ -312,7 +325,8 @@ class Model(torch.nn.Module):
         """Set the model mode (training or evaluation)
 
         :param mode: Mode: ``"train"`` for training or ``"eval"`` for evaluation.
-            See `torch.nn.Module.train <https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.train>`_
+            See `torch.nn.Module.train
+            <https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.train>`_
         :type mode: str
 
         :raises ValueError: If the mode is not ``"train"`` or ``"eval"``
@@ -366,12 +380,14 @@ class Model(torch.nn.Module):
         self.load_state_dict(torch.load(path, map_location=self.device))
         self.eval()
 
-    def migrate(self,
-                state_dict: Optional[Mapping[str, torch.Tensor]] = None,
-                path: Optional[str] = None,
-                name_map: Mapping[str, str] = {},
-                auto_mapping: bool = True,
-                verbose: bool = False) -> bool:
+    def migrate(
+        self,
+        state_dict: Optional[Mapping[str, torch.Tensor]] = None,
+        path: Optional[str] = None,
+        name_map: Mapping[str, str] = {},
+        auto_mapping: bool = True,
+        verbose: bool = False,
+    ) -> bool:
         """Migrate the specified external model's state dict to the current model
 
         The final storage device is determined by the constructor of the model
@@ -410,10 +426,14 @@ class Model(torch.nn.Module):
 
             # migrate a rl_games checkpoint with ambiguous state_dict
             >>> model.migrate(path="./runs/Cartpole/nn/Cartpole.pth", verbose=False)
-            [rlmodule:WARNING] Ambiguous match for log_std_parameter <- [value_mean_std.running_mean, value_mean_std.running_var, a2c_network.sigma]
-            [rlmodule:WARNING] Ambiguous match for net.0.bias <- [a2c_network.actor_mlp.0.bias, a2c_network.actor_mlp.2.bias]
-            [rlmodule:WARNING] Ambiguous match for net.2.bias <- [a2c_network.actor_mlp.0.bias, a2c_network.actor_mlp.2.bias]
-            [rlmodule:WARNING] Ambiguous match for net.4.weight <- [a2c_network.value.weight, a2c_network.mu.weight]
+            [rlmodule:WARNING] Ambiguous match for log_std_parameter <- [value_mean_std.running_mean,
+                               value_mean_std.running_var, a2c_network.sigma]
+            [rlmodule:WARNING] Ambiguous match for net.0.bias <- [a2c_network.actor_mlp.0.bias,
+                               a2c_network.actor_mlp.2.bias]
+            [rlmodule:WARNING] Ambiguous match for net.2.bias <- [a2c_network.actor_mlp.0.bias,
+                               a2c_network.actor_mlp.2.bias]
+            [rlmodule:WARNING] Ambiguous match for net.4.weight <- [a2c_network.value.weight,
+                               a2c_network.mu.weight]
             [rlmodule:WARNING] Ambiguous match for net.4.bias <- [a2c_network.value.bias, a2c_network.mu.bias]
             [rlmodule:WARNING] Multiple use of a2c_network.actor_mlp.0.bias -> [net.0.bias, net.2.bias]
             [rlmodule:WARNING] Multiple use of a2c_network.actor_mlp.2.bias -> [net.0.bias, net.2.bias]
@@ -482,9 +502,10 @@ class Model(torch.nn.Module):
             # stable-baselines3
             elif path.endswith(".zip"):
                 import zipfile
+
                 try:
-                    archive = zipfile.ZipFile(path, 'r')
-                    with archive.open('policy.pth', mode="r") as file:
+                    archive = zipfile.ZipFile(path, "r")
+                    with archive.open("policy.pth", mode="r") as file:
                         state_dict = torch.load(file, map_location=self.device)
                 except KeyError as e:
                     logger.warning(str(e))
@@ -519,7 +540,9 @@ class Model(torch.nn.Module):
                             logger.info(f"  |-- map:  {name} <- {external_name}")
                         break
                     else:
-                        logger.warning(f"Shape mismatch for {name} <- {external_name} : {tensor.shape} != {external_tensor.shape}")
+                        logger.warning(
+                            f"Shape mismatch for {name} <- {external_name} : {tensor.shape} != {external_tensor.shape}"
+                        )
                 # auto-mapped names
                 if auto_mapping and name not in name_map:
                     if tensor.shape == external_tensor.shape:

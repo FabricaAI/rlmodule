@@ -6,7 +6,7 @@ from rlmodule.source.utils import get_space_size
 
 class MLP(nn.Module):
     """Configurable multilayer perceptron module.
-    
+
     Architecture is defined by providing modules_cfg.MlpCfg
 
     Example of use:
@@ -18,6 +18,7 @@ class MLP(nn.Module):
         )
         net = MLP(cfg)
     """
+
     def __init__(self, cfg):
         super().__init__()
 
@@ -47,9 +48,10 @@ class RnnBase(nn.Module):
     All modules that have RNN substructure should inherit from this module.
     It makes sure all the necessary variables used by RL algorithm are defined.
     """
+
     def __init__(self, cfg):
         super().__init__()
-        
+
         # parameters necessary for RNN, GRU and LSTM networks
         self.num_envs = cfg.num_envs
         self.num_layers = cfg.num_layers
@@ -61,10 +63,10 @@ class RnnBase(nn.Module):
 
 class LSTM(RnnBase):
     """Configurable LSTM module.
-    
+
     Architecture is defined by providing modules_cfg.LstmCfg.
-    
-    Contains implementation of forward pass handling hidden and cell states 
+
+    Contains implementation of forward pass handling hidden and cell states
     necessary for run with PPO_RNN algorithm.
 
     Example of use:
@@ -78,6 +80,7 @@ class LSTM(RnnBase):
         )
         net = LSTM(cfg)
     """
+
     def __init__(self, cfg):
         super().__init__(cfg)
 
@@ -154,15 +157,16 @@ class LSTM(RnnBase):
         # reshape (N, L, D * Hout) -> (N * L, D * Hout)
         rnn_output = torch.flatten(rnn_output, start_dim=0, end_dim=1)
 
-        return rnn_output, {'rnn': [rnn_states[0], rnn_states[1]]}
+        return rnn_output, {"rnn": [rnn_states[0], rnn_states[1]]}
 
 
 class RnnModule(RnnBase):
     """Common base class for RNN and GRU module.
-    
-    Contains implementation of forward pass handling hidden states 
+
+    Contains implementation of forward pass handling hidden states
     necessary for run with PPO_RNN algorithm.
     """
+
     def __init__(self, cfg):
         super().__init__(cfg)
 
@@ -223,15 +227,15 @@ class RnnModule(RnnBase):
         # reshape (N, L, D * Hout) -> (N * L, D * Hout)
         rnn_output = torch.flatten(rnn_output, start_dim=0, end_dim=1)
 
-        return rnn_output, {'rnn': [hidden_states]}
+        return rnn_output, {"rnn": [hidden_states]}
 
 
 class RNN(RnnModule):
     """Configurable RNN module.
-    
+
     Architecture is defined by providing modules_cfg.RnnCfg.
-    
-    Contains implementation of forward pass handling hidden states 
+
+    Contains implementation of forward pass handling hidden states
     necessary for run with PPO_RNN algorithm.
 
     Example of use:
@@ -245,6 +249,7 @@ class RNN(RnnModule):
         )
         net = Rnn(cfg)
     """
+
     def __init__(self, cfg):
         super().__init__(cfg)
 
@@ -258,10 +263,10 @@ class RNN(RnnModule):
 
 class GRU(RnnModule):
     """Configurable GRU module.
-    
+
     Architecture is defined by providing modules_cfg.GruCfg.
-    
-    Contains implementation of forward pass handling hidden states 
+
+    Contains implementation of forward pass handling hidden states
     necessary for run with PPO_RNN algorithm.
 
     Example of use:
@@ -275,6 +280,7 @@ class GRU(RnnModule):
         )
         net = Gru(cfg)
     """
+
     def __init__(self, cfg):
         super().__init__(cfg)
 
@@ -288,11 +294,11 @@ class GRU(RnnModule):
 
 class RnnMlp(RnnBase):
     """Configurable module for Rnn-based module followed by MLP.
-    
+
     Architecture is defined by providing modules_cfg.RnnMlpCfg,
     based on which the RNN, GRU or LSTM module will be used.
-    
-    Inherits implementation of forward pass handling hidden states 
+
+    Inherits implementation of forward pass handling hidden states
     necessary for run with PPO_RNN algorithm.
 
     1) Example of use (with RNN module):
@@ -346,6 +352,7 @@ class RnnMlp(RnnBase):
             )
         net = RnnMlp(cfg)
     """
+
     def __init__(self, cfg):
         super().__init__(cfg.rnn)
         cfg.input_size = get_space_size(cfg.input_size)
@@ -362,11 +369,11 @@ class RnnMlp(RnnBase):
 class RnnMlpWithForwardedInput(RnnBase):
     """Configurable module for Rnn-based module followed by MLP with
     fast-forward input into MLP.
-    
+
     Architecture is defined by providing modules_cfg.RnnMlpCfg,
     based on which the RNN, GRU or LSTM module will be used.
-    
-    Inherits implementation of forward pass handling hidden states 
+
+    Inherits implementation of forward pass handling hidden states
     necessary for run with PPO_RNN algorithm.
 
     1) Example of use (with RNN module):
@@ -427,6 +434,7 @@ class RnnMlpWithForwardedInput(RnnBase):
         to work. However it is included here because it is necessary for use in rlmodule.build_model to
         differentiate it from RnnMlp class.
     """
+
     def __init__(self, cfg):
         super().__init__(cfg.rnn)
         cfg.input_size = get_space_size(cfg.input_size)
@@ -442,8 +450,7 @@ class RnnMlpWithForwardedInput(RnnBase):
         return self.mlp(mlp_input), output_dict
 
 
-
-# CNN - coming soon 
+# CNN - coming soon
 
 # def get_cnn_layer(params):
 #     """
@@ -516,7 +523,8 @@ class RnnMlpWithForwardedInput(RnnBase):
 #     params = {
 #         'input_shape': [1, 13, 13],
 #         'layers': [
-#             {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1, 'out_channels': 32, 'activation': 'relu'},
+#             {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1,
+#              'out_channels': 32, 'activation': 'relu'},
 #             {
 #                 'type': 'conv',
 #                 'kernel_size': 3,
@@ -601,7 +609,8 @@ class RnnMlpWithForwardedInput(RnnBase):
 #     cnn_params = {
 #         'input_shape': [1, 13, 13],
 #         'layers': [
-#             {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1, 'out_channels': 32, 'activation': 'relu'},
+#             {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1,
+#              'out_channels': 32, 'activation': 'relu'},
 #             {
 #                 'type': 'conv',
 #                 'kernel_size': 3,
@@ -616,7 +625,6 @@ class RnnMlpWithForwardedInput(RnnBase):
 #     mlp_params = {'hidden_units': [1024, 1024, 512], 'activations': ['elu', 'elu', 'elu']}
 
 #     return TripleCnnAndMlp(cnn_params, mlp_params)
-
 
 
 # class CrazyNet(RnnBase):
@@ -679,7 +687,8 @@ class RnnMlpWithForwardedInput(RnnBase):
 #     cnn_params = {
 #         'input_shape': [1, 13, 13],
 #         'layers': [
-#             {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1, 'out_channels': 32, 'activation': 'relu'},
+#             {'type': 'conv', 'kernel_size': 3, 'stride': 2, 'in_channels': 1,
+#              'out_channels': 32, 'activation': 'relu'},
 #             {
 #                 'type': 'conv',
 #                 'kernel_size': 3,

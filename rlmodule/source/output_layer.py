@@ -1,19 +1,14 @@
-
-import torch
-import torch.nn as nn
+from typing import Union
 
 import gym
 import gymnasium
 
+import torch
+import torch.nn as nn
 from torch.distributions import Normal
 
 from rlmodule.source.utils import get_space_size
 
-from typing import TYPE_CHECKING, Union
-
-# TODO type checking not working
-if TYPE_CHECKING:
-    from rlmodule.source.output_layer_cfg import OutputLayerCfg, GaussianLayerCfg, DeterministicLayerCfg
 
 class OutputLayer(nn.Module):
     def __init__(self, device: Union[str, torch.device], input_size: int, cfg):
@@ -21,13 +16,14 @@ class OutputLayer(nn.Module):
         super().__init__()
         self.device = device
 
-        self._clip_actions = cfg.clip_actions and (issubclass(type(cfg.output_size), gym.Space) or \
-            issubclass(type(cfg.output_size), gymnasium.Space))
+        self._clip_actions = cfg.clip_actions and (
+            issubclass(type(cfg.output_size), gym.Space) or issubclass(type(cfg.output_size), gymnasium.Space)
+        )
 
-        if self._clip_actions:  
+        if self._clip_actions:
             self._clip_actions_min = torch.tensor(cfg.output_size.low, device=self.device, dtype=torch.float32)
             self._clip_actions_max = torch.tensor(cfg.output_size.high, device=self.device, dtype=torch.float32)
-        
+
         self._input_size = input_size
         self._output_size = get_space_size(cfg.output_size)
 
@@ -57,19 +53,16 @@ class GaussianLayer(OutputLayer):
 
         if cfg.reduction not in ["mean", "sum", "prod", "none"]:
             raise ValueError("reduction must be one of 'mean', 'sum', 'prod' or 'none'")
-        self._reduction = torch.mean if cfg.reduction == "mean" else torch.sum if cfg.reduction == "sum" \
-            else torch.prod if cfg.reduction == "prod" else None
-
-        self._net = nn.Sequential(
-            nn.Linear(self._input_size,  self._output_size), 
-            cfg.output_activation()
+        self._reduction = (
+            torch.mean
+            if cfg.reduction == "mean"
+            else torch.sum if cfg.reduction == "sum" else torch.prod if cfg.reduction == "prod" else None
         )
 
-        self._log_std_parameter = nn.Parameter(
-            cfg.initial_log_std * torch.ones( self._output_size )
-        )
-        
-        
+        self._net = nn.Sequential(nn.Linear(self._input_size, self._output_size), cfg.output_activation())
+
+        self._log_std_parameter = nn.Parameter(cfg.initial_log_std * torch.ones(self._output_size))
+
     def forward(self, input, taken_actions, outputs_dict):
         """Act stochastically in response to the state of the environment
 
@@ -95,16 +88,16 @@ class GaussianLayer(OutputLayer):
             torch.Size([4096, 8]) torch.Size([4096, 1]) torch.Size([4096, 8])
         """
         mean_actions = self._net(input)
-        
+
         log_std = self._log_std_parameter
-        
+
         # clamp log standard deviations
         if self._clip_log_std:
             log_std = torch.clamp(log_std, self._log_std_min, self._log_std_max)
 
         self._clamped_log_std = log_std
-        
-        #self._clamped_log_std = log_std
+
+        # self._clamped_log_std = log_std
         self._num_samples = mean_actions.shape[0]
 
         # distribution
@@ -116,10 +109,10 @@ class GaussianLayer(OutputLayer):
         # clip actions
         if self._clip_actions:
             actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
-        
+
         if taken_actions is None:
             taken_actions = actions
-        
+
         # log of the probability density function
         log_prob = self._distribution.log_prob(taken_actions)
         if self._reduction is not None:
@@ -130,7 +123,6 @@ class GaussianLayer(OutputLayer):
         outputs_dict["mean_actions"] = mean_actions
         return actions, log_prob, outputs_dict
 
-
         ####
 
         # TODO(ll)
@@ -138,8 +130,10 @@ class GaussianLayer(OutputLayer):
         # 1) changing shape if it comes in linear fashion of input, check how I was doing this.
         # def compute(self, inputs, role):
         # # permute (samples, width * height * channels) -> (samples, channels, width, height)
-        # return self._net(inputs["states"].view(-1, *self.observation_space.shape).permute(0, 3, 1, 2)), self._log_std, {}
-        # 2) what with that weird Shapes?  search for taken_actions, who called it with this input. How should CNN be applied to such things..just in states? 
+        # return self._net(inputs["states"].view(-1, *self.observation_space.shape).permute(0, 3, 1, 2)),
+        # self._log_std, {}
+        # 2) what with that weird Shapes?  search for taken_actions, who called it with this input.
+        # How should CNN be applied to such things..just in states?
 
         # TODO(ll) output scale removed .. check that tanh where is
         # return output * self.instantiator_output_scale, self._log_std, {}
@@ -210,10 +204,7 @@ class DeterministicLayer(OutputLayer):
 
         super().__init__(device, input_size, cfg)
 
-        self._net = nn.Sequential(
-            nn.Linear(input_size, cfg.output_size), 
-            cfg.output_activation()
-        )
+        self._net = nn.Sequential(nn.Linear(input_size, cfg.output_size), cfg.output_activation())
 
     def forward(self, input, taken_actions, outputs_dict):
         """Act deterministically in response to the state of the environment
@@ -242,5 +233,5 @@ class DeterministicLayer(OutputLayer):
 
         if self._clip_actions:
             actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)
-        
+
         return actions, None, outputs_dict

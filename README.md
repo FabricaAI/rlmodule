@@ -2,6 +2,26 @@
 Flexible reinforcement learning models instantiators library
 
 
+Now it only supports skrl, but is intended to be library agnostic - in later expansion
+
+try other algos
+shared separate model
+
+
+<!--
+# todo
+# cnn
+# WRITE README tutorial
+# Run & fix pre-commit
+# annotate cfgs in modules - why doesn't work TYPE_CHECKING
+# extensive comments
+# Launch new version to pip
+# Import new version in Isaac-lab
+# lazy linear? what is it ?
+# random model run add function back
+-->
+
+
 ## How to run
 
 ### Install rlmodule from local code
@@ -13,7 +33,7 @@ Flexible reinforcement learning models instantiators library
 python3 -m venv venv
 source venv/bin/activate
 ```
-- Install library from local code 
+- Install library from local code
 ```
 pip install -e .
 ```
@@ -41,6 +61,3 @@ python -m build
 ```
 twine upload dist/*
 ```
-
-
-

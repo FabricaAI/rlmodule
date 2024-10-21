@@ -1,12 +1,13 @@
 from typing import Sequence, Union
-import torch
-from torch import nn
-import numpy as np
 
 import gym
 import gymnasium
 
-# TODO(ll) double function, already defined in model_instantiators.py
+import numpy as np
+import torch
+from torch import nn
+
+
 def contains_rnn_module(module: nn.Module, module_types):
     for submodule in module.modules():
         if isinstance(submodule, module_types):
@@ -14,7 +15,6 @@ def contains_rnn_module(module: nn.Module, module_types):
     return False
 
 
-# TODO check for input sizes, also check if you can't just pass inputs. instead of separate thingies separated in RLModel
 def get_output_size(module, input_shape):
     module.train(False)
     if isinstance(input_shape, int):
@@ -28,8 +28,9 @@ def get_output_size(module, input_shape):
         return module(dummy_input).view(-1).shape[0]
 
 
-def get_space_size(space: Union[int, Sequence[int], gym.Space, gymnasium.Space],
-                   number_of_elements: bool = True) -> int:
+def get_space_size(
+    space: Union[int, Sequence[int], gym.Space, gymnasium.Space], number_of_elements: bool = True
+) -> int:
     """Get the size (number of elements) of a space
 
     :param space: Space or shape from which to obtain the number of elements
@@ -100,7 +101,7 @@ def get_space_size(space: Union[int, Sequence[int], gym.Space, gymnasium.Space],
         elif issubclass(type(space), gym.spaces.Box):
             size = np.prod(space.shape)
         elif issubclass(type(space), gym.spaces.Dict):
-            size = sum([self._get_space_size(space.spaces[key], number_of_elements) for key in space.spaces])
+            size = sum([get_space_size(space.spaces[key], number_of_elements) for key in space.spaces])
     elif issubclass(type(space), gymnasium.Space):
         if issubclass(type(space), gymnasium.spaces.Discrete):
             if number_of_elements:
@@ -115,9 +116,9 @@ def get_space_size(space: Union[int, Sequence[int], gym.Space, gymnasium.Space],
         elif issubclass(type(space), gymnasium.spaces.Box):
             size = np.prod(space.shape)
         elif issubclass(type(space), gymnasium.spaces.Dict):
-            size = sum([self._get_space_size(space.spaces[key], number_of_elements) for key in space.spaces])
+            size = sum([get_space_size(space.spaces[key], number_of_elements) for key in space.spaces])
     elif space is None:
-        size = -1  # size will be inferred externally 
+        size = -1  # size will be inferred externally
     if size is None:
         raise ValueError(f"Space type {type(space)} not supported")
     return int(size)

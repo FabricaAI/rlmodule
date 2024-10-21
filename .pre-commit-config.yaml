@@ -31,7 +31,7 @@ repos:
     rev: 7.0.0
     hooks:
       - id: flake8
-        args: [--config=config/flake8.ini]
+        args: [--config=flake8.ini]
 
   # Spelling
   - repo: https://github.com/codespell-project/codespell
