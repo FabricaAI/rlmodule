@@ -1,61 +1,60 @@
-import gymnasium as gym
-import torch.nn as nn
 import os
 from datetime import datetime
-
-from rlmodule.skrl.torch import build_model, SharedRLModelCfg
-from rlmodule.skrl.torch.network import MlpCfg 
-from rlmodule.skrl.torch.output_layer import DeterministicLayerCfg, GaussianLayerCfg
-
+import gymnasium as gym
 
 # import the skrl components to build the RL system
-from skrl.agents.torch.ppo import PPO, PPO_RNN, PPO_DEFAULT_CONFIG
-
+from skrl.agents.torch.ppo import PPO, PPO_DEFAULT_CONFIG, PPO_RNN
 from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
 from skrl.memories.torch import RandomMemory
 from skrl.resources.preprocessors.torch import RunningStandardScaler
 from skrl.resources.schedulers.torch import KLAdaptiveRL
 from skrl.trainers.torch import SequentialTrainer
 from skrl.utils import set_seed
-from skrl.envs.wrappers.torch.gymnasium_envs import GymnasiumWrapper
 
-# set seed for reproducibility
-seed = 42
-set_seed(seed)
+import torch.nn as nn
+
+from rlmodule.skrl.torch import SharedRLModelCfg, build_model
+from rlmodule.skrl.torch.network import MlpCfg
+from rlmodule.skrl.torch.output_layer import DeterministicLayerCfg, GaussianLayerCfg
+
 
 def get_model(env):
     """Instantiate the agent's models (function approximators)."""
 
     net_cfg = MlpCfg(
-        input_size = env.observation_space,
-        hidden_units = [64, 64, 64],
-        activation = nn.ReLU,
+        input_size=env.observation_space,
+        hidden_units=[64, 64, 64],
+        activation=nn.ReLU,
     )
 
-    model = build_model( 
+    model = build_model(
         SharedRLModelCfg(
-            network= net_cfg,
-            device= device,
-            policy_output_layer= GaussianLayerCfg(
-                    output_size=env.action_space,
-                    min_log_std=-1.2,
-                    max_log_std=2,
-                    initial_log_std=0.2,
-                ),
-            value_output_layer= DeterministicLayerCfg(),
+            network=net_cfg,
+            device=device,
+            policy_output_layer=GaussianLayerCfg(
+                output_size=env.action_space,
+                min_log_std=-1.2,
+                max_log_std=2,
+                initial_log_std=0.2,
+            ),
+            value_output_layer=DeterministicLayerCfg(),
         )
     )
 
-    print("Model: ", model)
-    return {'policy': model, 'value': model}
+    print(model)
+    return {"policy": model, "value": model}
 
+
+# set seed for reproducibility
+seed = 42
+set_seed(seed)
 
 # load and wrap the gymnasium environment.
 # note: the environment version may change depending on the gymnasium version
 try:
     env = gym.vector.make("Pendulum-v1", num_envs=4, asynchronous=False)
-except (gym.error.DeprecatedEnv, gym.error.VersionNotFound) as e:
-    env_id = [spec for spec in gym.envs.registry if spec.startswith("Pendulum-v")][0]
+except (gym.error.DeprecatedEnv, gym.error.VersionNotFound):
+    env_id = [spec for spec in gym.envs.registry if spec.startswith("Pendulum-v-")][0]
     print("Pendulum-v1 not found. Trying {}".format(env_id))
     env = gym.vector.make(env_id, num_envs=4, asynchronous=False)
 
@@ -94,18 +93,20 @@ cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 cfg["experiment"]["write_interval"] = 500
 cfg["experiment"]["checkpoint_interval"] = 5000
 cfg["experiment"]["directory"] = "runs/skrl/torch/"
-cfg["experiment"]["experiment_name"] = os.path.splitext(os.path.basename(__file__))[0] + "_" + datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+cfg["experiment"]["experiment_name"] = (
+    os.path.splitext(os.path.basename(__file__))[0] + "_" + datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+)
 
 params = {
-    'models': models,
-    'memory': memory,
-    'cfg': cfg,
-    'observation_space': env.observation_space,
-    'action_space': env.action_space,
-    'device': device
+    "models": models,
+    "memory": memory,
+    "cfg": cfg,
+    "observation_space": env.observation_space,
+    "action_space": env.action_space,
+    "device": device,
 }
 
-if models['policy'].is_rnn:
+if models["policy"].is_rnn:
     agent = PPO_RNN(**params)
 else:
     agent = PPO(**params)

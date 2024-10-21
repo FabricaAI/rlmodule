@@ -5,10 +5,12 @@
 
 """Sub-module for utilities for working with dictionaries."""
 
-from collections.abc import Iterable, Mapping
 from typing import Any
 
+from collections.abc import Iterable, Mapping
+
 from .string import callable_to_string, string_to_callable
+
 
 """
 Dictionary <-> Class operations.
@@ -118,4 +120,3 @@ def update_class_from_dict(obj, data: dict[str, Any], _ns: str = "") -> None:
                 setattr(obj, key, value)
         else:
             raise KeyError(f"[Config]: Key not found under namespace: {key_ns}.")
-        

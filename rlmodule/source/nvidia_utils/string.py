@@ -11,6 +11,7 @@ import inspect
 import re
 from collections.abc import Callable
 
+
 """
 String <-> Callable operations.
 """

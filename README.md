@@ -8,16 +8,17 @@ try other algos
 shared separate model
 
 
-<!-- 
+<!--
 # todo
 # cnn
 # WRITE README tutorial
 # Run & fix pre-commit
-# annotate cfgs in modules - why doesn't work
+# annotate cfgs in modules - why doesn't work TYPE_CHECKING
 # extensive comments
 # Launch new version to pip
 # Import new version in Isaac-lab
-# lazy linear? what is it ?  
+# lazy linear? what is it ?
+# random model run add function back
 -->
 
 
@@ -32,7 +33,7 @@ shared separate model
 python3 -m venv venv
 source venv/bin/activate
 ```
-- Install library from local code 
+- Install library from local code
 ```
 pip install -e .
 ```
@@ -60,6 +61,3 @@ python -m build
 ```
 twine upload dist/*
 ```
-
-
-
