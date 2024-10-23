@@ -191,6 +191,39 @@ class Model(torch.nn.Module):
                     start = end
                 return output
         raise ValueError(f"Space type {type(space)} not supported")
+    
+    def random_act(self,
+                   inputs: Mapping[str, Union[torch.Tensor, Any]],
+                   role: str = "") -> Tuple[torch.Tensor, None, Mapping[str, Union[torch.Tensor, Any]]]:
+        """Act randomly according to the action space
+
+        :param inputs: Model inputs. The most common keys are:
+
+                       - ``"states"``: state of the environment used to make the decision
+                       - ``"taken_actions"``: actions taken by the policy for the given states
+        :type inputs: dict where the values are typically torch.Tensor
+        :param role: Role play by the model (default: ``""``)
+        :type role: str, optional
+
+        :raises NotImplementedError: Unsupported action space
+
+        :return: Model output. The first component is the action to be taken by the agent
+        :rtype: tuple of torch.Tensor, None, and dict
+        """
+        # discrete action space (Discrete)
+        if issubclass(type(self.action_space), gym.spaces.Discrete) or issubclass(type(self.action_space), gymnasium.spaces.Discrete):
+            return torch.randint(self.action_space.n, (inputs["states"].shape[0], 1), device=self.device), None, {}
+        # continuous action space (Box)
+        elif issubclass(type(self.action_space), gym.spaces.Box) or issubclass(type(self.action_space), gymnasium.spaces.Box):
+            if self._random_distribution is None:
+                self._random_distribution = torch.distributions.uniform.Uniform(
+                    low=torch.tensor(self.action_space.low[0], device=self.device, dtype=torch.float32),
+                    high=torch.tensor(self.action_space.high[0], device=self.device, dtype=torch.float32))
+
+            return self._random_distribution.sample(sample_shape=(inputs["states"].shape[0], self.num_actions)), None, {}
+        else:
+            raise NotImplementedError(f"Action space type ({type(self.action_space)}) not supported")
+
 
     def init_parameters(self, method_name: str = "normal_", *args, **kwargs) -> None:
         """Initialize the model parameters according to the specified method name
