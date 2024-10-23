@@ -17,7 +17,7 @@ from rlmodule.skrl.torch import build_model
 from rlmodule.skrl.torch.network import MlpCfg
 from rlmodule.skrl.torch.output_layer import DeterministicLayerCfg, GaussianLayerCfg
 from rlmodule.source.network_cfg import RnnCfg, RnnMlpCfg
-from rlmodule.source.rlmodel_cfg import RLModelCfg
+from rlmodule.skrl.torch import RLModelCfg
 
 
 def get_model(env):
