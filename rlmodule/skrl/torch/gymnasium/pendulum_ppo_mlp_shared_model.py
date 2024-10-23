@@ -23,7 +23,7 @@ def get_model(env):
 
     net_cfg = MlpCfg(
         input_size=env.observation_space,
-        hidden_units=[64, 64, 64],
+        hidden_units=[64, 64],
         activation=nn.ReLU,
     )
 
@@ -35,7 +35,7 @@ def get_model(env):
                 output_size=env.action_space,
                 min_log_std=-1.2,
                 max_log_std=2,
-                initial_log_std=0.2,
+                initial_log_std=0.0,
             ),
             value_output_layer=DeterministicLayerCfg(),
         )

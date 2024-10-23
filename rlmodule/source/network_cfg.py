@@ -39,6 +39,11 @@ class RnnBaseCfg(NetworkCfg):
     num_layers: int = MISSING
     hidden_size: int = MISSING
     sequence_length: int = MISSING
+    """Sequence length to be used for training.
+    
+    
+    
+    """
 
 
 @configclass

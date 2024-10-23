@@ -13,49 +13,45 @@ from skrl.utils import set_seed
 
 import torch.nn as nn
 
-from rlmodule.skrl.torch import build_model
+from rlmodule.skrl.torch import SharedRLModelCfg, build_model
 from rlmodule.skrl.torch.network import MlpCfg
 from rlmodule.skrl.torch.output_layer import DeterministicLayerCfg, GaussianLayerCfg
-from rlmodule.source.rlmodel_cfg import RLModelCfg
+from rlmodule.source.network_cfg import RnnCfg, RnnMlpCfg
 
 
 def get_model(env):
     """Instantiate the agent's models (function approximators)."""
 
-    net_cfg = MlpCfg(
-        input_size=env.observation_space,
-        hidden_units=[64, 64],
-        activation=nn.ReLU,
+    net_cfg = RnnMlpCfg(
+        input_size = env.observation_space,
+        rnn = RnnCfg(
+            num_envs = env.num_envs,
+            num_layers = 1,
+            hidden_size = 32,
+            sequence_length = 16,
+        ),
+        mlp = MlpCfg(
+            hidden_units = [64, 64],
+            activation = nn.ReLU,
+        ),
     )
 
-    print(env.action_space)
-    print(env.observation_space)
-
-    policy_model = build_model(
-        RLModelCfg(
+    model = build_model(
+        SharedRLModelCfg(
             network=net_cfg,
             device=device,
-            output_layer=GaussianLayerCfg(
+            policy_output_layer=GaussianLayerCfg(
                 output_size=env.action_space,
-                output_scale = 2.0,
                 min_log_std=-1.2,
                 max_log_std=2,
                 initial_log_std=0.0,
             ),
+            value_output_layer=DeterministicLayerCfg(),
         )
     )
 
-    value_model = build_model(
-        RLModelCfg(
-            network=net_cfg,
-            device=device,
-            output_layer=DeterministicLayerCfg(),
-        )
-    )
-
-    models = {"policy": policy_model, "value": value_model}
-    print(models)
-    return models
+    print(model)
+    return {"policy": model, "value": model}
 
 
 # set seed for reproducibility

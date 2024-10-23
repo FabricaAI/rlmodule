@@ -43,6 +43,14 @@ class Model(torch.nn.Module):
         """Return true if there is an LSTM submodule"""
         return self._lstm
 
+    
+    def _get_policy_output_layer(self):
+        if hasattr(self, '_policy_output_layer'):
+            return self._policy_output_layer  # SharedModel
+        else:
+            return self._output_layer  # SeparatedModels
+    
+    
     def get_entropy(self, role: str = "") -> torch.Tensor:
         """Compute and return the entropy of the model
 
@@ -57,7 +65,7 @@ class Model(torch.nn.Module):
             >>> print(entropy.shape)
             torch.Size([4096, 8])
         """
-        return self._policy_output_layer.get_entropy(role)
+        return self._get_policy_output_layer().get_entropy(role)
 
     def distribution(self, role: str = "") -> torch.distributions.Normal:
         """Get the current distribution of the model
@@ -73,7 +81,7 @@ class Model(torch.nn.Module):
             >>> print(distribution)
             Normal(loc: torch.Size([4096, 8]), scale: torch.Size([4096, 8]))
         """
-        return self._policy_output_layer.distribution(role)
+        return self._get_policy_output_layer().distribution(role)
 
     def get_specification(self) -> Mapping[str, Any]:
         """Returns the specification of the model

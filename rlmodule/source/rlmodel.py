@@ -18,7 +18,6 @@ class RLModel(Model):
 
         super().__init__(device, network)
         self._output_layer = output_layer
-        self._policy_output_layer = self._output_layer
 
     def forward(
         self, inputs: Mapping[str, Union[torch.Tensor, Any]], role: str = ""
@@ -44,7 +43,7 @@ class SharedRLModel(Model):
         value_output_layer: Optional[nn.Module],
     ):
         # TODO(ll) description
-        """Shared Reinforcement learning model"""
+        """Shared Reinforcement learning model."""
 
         super().__init__(device, network)
 

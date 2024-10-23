@@ -16,20 +16,26 @@ import torch.nn as nn
 from rlmodule.skrl.torch import build_model
 from rlmodule.skrl.torch.network import MlpCfg
 from rlmodule.skrl.torch.output_layer import DeterministicLayerCfg, GaussianLayerCfg
+from rlmodule.source.network_cfg import RnnCfg, RnnMlpCfg
 from rlmodule.source.rlmodel_cfg import RLModelCfg
 
 
 def get_model(env):
     """Instantiate the agent's models (function approximators)."""
 
-    net_cfg = MlpCfg(
-        input_size=env.observation_space,
-        hidden_units=[64, 64],
-        activation=nn.ReLU,
+    net_cfg = RnnMlpCfg(
+        input_size = env.observation_space,
+        rnn = RnnCfg(
+            num_envs = env.num_envs,
+            num_layers = 1,
+            hidden_size = 32,
+            sequence_length = 16,
+        ),
+        mlp = MlpCfg(
+            hidden_units = [64, 64],
+            activation = nn.ReLU,
+        ),
     )
-
-    print(env.action_space)
-    print(env.observation_space)
 
     policy_model = build_model(
         RLModelCfg(
@@ -88,7 +94,7 @@ cfg["learning_epochs"] = 10
 cfg["mini_batches"] = 32
 cfg["discount_factor"] = 0.9
 cfg["lambda"] = 0.95
-cfg["learning_rate"] = 1e-3
+cfg["learning_rate"] = 3e-4
 cfg["learning_rate_scheduler"] = KLAdaptiveRL
 cfg["learning_rate_scheduler_kwargs"] = {"kl_threshold": 0.008}
 cfg["grad_norm_clip"] = 0.5

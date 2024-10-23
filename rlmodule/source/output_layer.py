@@ -16,16 +16,20 @@ class OutputLayer(nn.Module):
         super().__init__()
         self.device = device
 
-        self._clip_actions = cfg.clip_actions and (
-            issubclass(type(cfg.output_size), gym.Space) or issubclass(type(cfg.output_size), gymnasium.Space)
-        )
+        # clip action is only supported for gym/gymnasium space 
+        self._clip_actions = False
 
+        if issubclass(type(cfg.output_size), gym.Space) or issubclass(type(cfg.output_size), gymnasium.Space):
+            self._clip_actions = cfg.clip_actions
+            
         if self._clip_actions:
             self._clip_actions_min = torch.tensor(cfg.output_size.low, device=self.device, dtype=torch.float32)
             self._clip_actions_max = torch.tensor(cfg.output_size.high, device=self.device, dtype=torch.float32)
 
         self._input_size = input_size
         self._output_size = get_space_size(cfg.output_size)
+
+        self._output_scale = cfg.output_scale
 
 
 class GaussianLayer(OutputLayer):
@@ -87,7 +91,7 @@ class GaussianLayer(OutputLayer):
             >>> print(actions.shape, log_prob.shape, outputs["mean_actions"].shape)
             torch.Size([4096, 8]) torch.Size([4096, 1]) torch.Size([4096, 8])
         """
-        mean_actions = self._net(input)
+        mean_actions = self._output_scale * self._net(input)  # TODO in skrl example the self._cfg.output_scale * is done here. -> why understand this (is it correct).
 
         log_std = self._log_std_parameter
 
@@ -96,8 +100,6 @@ class GaussianLayer(OutputLayer):
             log_std = torch.clamp(log_std, self._log_std_min, self._log_std_max)
 
         self._clamped_log_std = log_std
-
-        # self._clamped_log_std = log_std
         self._num_samples = mean_actions.shape[0]
 
         # distribution
@@ -229,7 +231,7 @@ class DeterministicLayer(OutputLayer):
             torch.Size([4096, 1]) {}
         """
 
-        actions = self._net(input)
+        actions = self._output_scale * self._net(input)
 
         if self._clip_actions:
             actions = torch.clamp(actions, min=self._clip_actions_min, max=self._clip_actions_max)

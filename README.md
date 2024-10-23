@@ -10,6 +10,7 @@ shared separate model
 
 <!--
 # todo
+# some envs have by default range on which they work, like pendulum -2, 2, need to propaget that in.
 # cnn
 # WRITE README tutorial
 # Run & fix pre-commit
