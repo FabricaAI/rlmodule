@@ -73,7 +73,7 @@ class NNLogStd(LogStd):
                 nn.Identity(),
             )
         else:
-            network_cfg.input_size = input_size
+            network_cfg.input_states = input_size
             hidden_net = network_cfg.module(network_cfg).to(device)
 
             layers = [
@@ -102,18 +102,19 @@ class CombinedLogStd(LogStd):
     def __init__(self, device: Union[str, torch.device], input_size: int, output_size: int, cfg):
         super().__init__(device, input_size, output_size, cfg)
 
-        self._modules = [
-            module_cfg.class_type(device, input_size, output_size, module_cfg) for module_cfg in cfg.combined_modules
+        self._std_modules = [
+            module_cfg.class_type(device, input_size, output_size, module_cfg).to(device)
+            for module_cfg in cfg.combined_modules
         ]
 
         if cfg.combination_constants is None:
-            self._combination_constants = list(repeat(1.0, len(self._modules)))
+            self._combination_constants = list(repeat(1.0, len(self._std_modules)))
         else:
             self._combination_constants = cfg.combination_constants
-            if len(self._modules) != len(self._combination_constants):
+            if len(self._std_modules) != len(self._combination_constants):
                 raise ValueError(
                     f"Number of combination constants {len(self._combination_constants)} does not match number of"
-                    f" modules {len(self._modules)}"
+                    f" modules {len(self._std_modules)}"
                 )
 
         if cfg.combination_method == "max":
@@ -128,6 +129,6 @@ class CombinedLogStd(LogStd):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Compute standard deviation as a combination from multiple Std modules."""
         collected_stds = [
-            self._combination_constants[module_id] * module(input) for module_id, module in enumerate(self._modules)
+            self._combination_constants[module_id] * module(input) for module_id, module in enumerate(self._std_modules)
         ]
         return self.clip_std(reduce(self._combination_method, collected_stds))
